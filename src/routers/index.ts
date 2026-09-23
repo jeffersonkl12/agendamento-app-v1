@@ -4,6 +4,7 @@ const routes = [
   { path: '/login', component: () => import('@pages/Login.vue'), meta: { title: 'Entrar' } },
   { path: '/cadastro', component: () => import('@pages/Cadastro.vue'), meta: { title: 'Criar conta' } },
   { path: '/recuperar-senha', component: () => import('@pages/RecuperarSenha.vue'), meta: { title: 'Recuperar senha' } },
+  { path: '/redefinir-senha', component: () => import('@pages/RedefinirSenha.vue'), meta: { title: 'Redefinir senha' } },
   {
     path: '/',
     component: () => import('@layouts/AppLayout.vue'),

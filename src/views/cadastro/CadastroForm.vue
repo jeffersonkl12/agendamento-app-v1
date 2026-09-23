@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import * as z from 'zod'
+import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
 import { AuthInput } from '@components/auth/auth-input'
 import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
@@ -41,17 +42,14 @@ function onGoogleSignIn() {
     class="flex flex-col items-center justify-center gap-3.5 px-7 pt-20 pb-15"
     aria-labelledby="cadastro-title"
   >
-    <div class="flex size-14 items-center justify-center rounded-2xl bg-primary">
-      <span class="text-mark text-primary-foreground">SB</span>
-    </div>
-
-    <h1 id="cadastro-title" class="text-center font-heading text-metric text-foreground">
-      Criar sua conta
-    </h1>
-
-    <p class="text-center text-caption-lg text-muted-foreground">
-      Comece a organizar sua agenda em minutos
-    </p>
+    <AuthHeader>
+      <AuthHeaderTitle id="cadastro-title">
+        Criar sua conta
+      </AuthHeaderTitle>
+      <AuthHeaderDescription>
+        Comece a organizar sua agenda em minutos
+      </AuthHeaderDescription>
+    </AuthHeader>
 
     <GoogleButton @click="onGoogleSignIn">Cadastrar com Google</GoogleButton>
 

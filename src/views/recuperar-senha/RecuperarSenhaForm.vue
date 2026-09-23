@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
 import { AuthInput } from '@components/auth/auth-input'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
@@ -28,17 +29,14 @@ function onSubmit() {
     class="flex flex-col items-center justify-center gap-3.5 px-7 pt-20 pb-15"
     aria-labelledby="recuperar-senha-title"
   >
-    <div class="flex size-14 items-center justify-center rounded-2xl bg-primary">
-      <span class="text-mark text-primary-foreground">SB</span>
-    </div>
-
-    <h1 id="recuperar-senha-title" class="text-center font-heading text-metric text-foreground">
-      Recuperar senha
-    </h1>
-
-    <p class="text-center text-caption-lg text-muted-foreground">
-      Informe seu e-mail e enviaremos um link para redefinir sua senha
-    </p>
+    <AuthHeader>
+      <AuthHeaderTitle id="recuperar-senha-title">
+        Recuperar senha
+      </AuthHeaderTitle>
+      <AuthHeaderDescription>
+        Informe seu e-mail e enviaremos um link para redefinir sua senha
+      </AuthHeaderDescription>
+    </AuthHeader>
 
     <Form
       :validation-schema="schema"

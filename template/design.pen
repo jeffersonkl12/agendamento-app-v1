@@ -10723,6 +10723,191 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "sRD22",
+      "x": 0,
+      "y": 6420,
+      "name": "1d · Redefinir Senha",
+      "clip": true,
+      "width": 375,
+      "fill": "$bg",
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "vzbKv",
+          "type": "ref",
+          "ref": "F6JJP",
+          "name": "Status Bar"
+        },
+        {
+          "type": "frame",
+          "id": "PgKD8",
+          "name": "Body",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            100,
+            28,
+            60,
+            28
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "E5nkCH",
+              "name": "Logo Badge",
+              "width": 56,
+              "height": 56,
+              "fill": "$primary",
+              "cornerRadius": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mPB9F",
+                  "name": "Logo Text",
+                  "fill": "$white",
+                  "content": "SB",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "HM2eZ",
+              "name": "Title",
+              "fill": "$text-primary",
+              "content": "Criar nova senha",
+              "textAlign": "center",
+              "fontFamily": "$font-display",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "vQe3h",
+              "name": "Subtitle",
+              "fill": "$text-secondary",
+              "textGrowth": "fixed-width",
+              "width": 290,
+              "content": "Sua identidade foi confirmada. Defina uma nova senha para acessar sua conta.",
+              "textAlign": "center",
+              "fontFamily": "$font-ui",
+              "fontSize": 13.5,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "yixVO",
+              "name": "Spacer",
+              "width": 1,
+              "height": 6
+            },
+            {
+              "type": "frame",
+              "id": "f14Sa",
+              "name": "New Password Field",
+              "width": "fill_container",
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "#E5DAD5",
+              "strokeWidth": 1.5,
+              "padding": [
+                13,
+                14
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ny3oG",
+                  "name": "Placeholder",
+                  "fill": "$text-secondary",
+                  "content": "Nova senha",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OrB21",
+              "name": "Confirm Password Field",
+              "width": "fill_container",
+              "fill": "$white",
+              "cornerRadius": 12,
+              "stroke": "#E5DAD5",
+              "strokeWidth": 1.5,
+              "padding": [
+                13,
+                14
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xLa7G",
+                  "name": "Placeholder",
+                  "fill": "$text-secondary",
+                  "content": "Confirmar nova senha",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bqGcG",
+              "name": "Save Button",
+              "width": "fill_container",
+              "fill": "$primary",
+              "cornerRadius": 14,
+              "padding": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s3aHDi",
+                  "name": "Save Label",
+                  "fill": "$white",
+                  "content": "Salvar nova senha",
+                  "textAlign": "center",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 14.5,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "J3a5O0",
+              "name": "Back Row",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nNeoU",
+                  "name": "Back Link",
+                  "fill": "$primary",
+                  "content": "Voltar para o login",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

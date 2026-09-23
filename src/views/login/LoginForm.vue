@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import * as z from 'zod'
+import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
 import { AuthInput } from '@components/auth/auth-input'
 import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
@@ -27,17 +28,14 @@ function onGoogleSignIn() {
     class="flex flex-col items-center justify-center gap-3.5 px-7 pt-20 pb-15"
     aria-labelledby="login-title"
   >
-    <div class="flex size-14 items-center justify-center rounded-2xl bg-primary">
-      <span class="text-mark text-primary-foreground">SB</span>
-    </div>
-
-    <h1 id="login-title" class="text-center font-heading text-metric text-foreground">
-      Bem-vindo de volta
-    </h1>
-
-    <p class="text-center text-caption-lg text-muted-foreground">
-      Entre para gerenciar seus agendamentos
-    </p>
+    <AuthHeader>
+      <AuthHeaderTitle id="login-title">
+        Bem-vindo de volta
+      </AuthHeaderTitle>
+      <AuthHeaderDescription>
+        Entre para gerenciar seus agendamentos
+      </AuthHeaderDescription>
+    </AuthHeader>
 
     <GoogleButton @click="onGoogleSignIn">
       Continuar com Google
