@@ -2,13 +2,11 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import * as z from 'zod'
+import { AuthInput } from '@components/auth/auth-input'
 import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
-import { Input } from '@components/ui/input'
 import { Separator } from '@components/ui/separator'
-
-const FIELD_CLASS = 'h-11.25 rounded-[12px] border-[1.5px] border-border-subtle bg-card px-3.5 text-paragraph text-foreground md:text-paragraph'
 
 const schema = toTypedSchema(z.object({
   identifier: z.string({ message: 'Informe seu e-mail ou usuário' }).min(1, 'Informe seu e-mail ou usuário'),
@@ -63,11 +61,10 @@ function onGoogleSignIn() {
               E-mail ou usuário
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="text"
                 autocomplete="username"
                 placeholder="E-mail ou usuário"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
@@ -81,11 +78,10 @@ function onGoogleSignIn() {
               Senha
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="password"
                 autocomplete="current-password"
                 placeholder="Senha"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
@@ -95,8 +91,7 @@ function onGoogleSignIn() {
       </div>
 
       <div class="flex justify-end">
-        <!-- TODO: apontar para a rota de recuperação de senha quando a tela existir -->
-        <RouterLink to="/TODO" class="text-tag-sm text-primary">
+        <RouterLink to="/recuperar-senha" class="text-tag-sm text-primary">
           Esqueci minha senha
         </RouterLink>
       </div>

@@ -2,13 +2,12 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import * as z from 'zod'
+import { AuthInput } from '@components/auth/auth-input'
 import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
-import { Input } from '@components/ui/input'
 import { Separator } from '@components/ui/separator'
 
-const FIELD_CLASS = 'h-11.25 rounded-[12px] border-[1.5px] border-border-subtle bg-card px-3.5 text-paragraph text-foreground md:text-paragraph aria-invalid:border-error aria-invalid:ring-0'
 const MESSAGE_CLASS = 'text-label text-error'
 
 const schema = toTypedSchema(
@@ -74,11 +73,10 @@ function onGoogleSignIn() {
               Nome
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="text"
                 autocomplete="name"
                 placeholder="Nome"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
@@ -92,12 +90,11 @@ function onGoogleSignIn() {
               E-mail
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="email"
                 autocomplete="email"
                 inputmode="email"
                 placeholder="E-mail"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
@@ -111,11 +108,10 @@ function onGoogleSignIn() {
               Senha
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="password"
                 autocomplete="new-password"
                 placeholder="Senha"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
@@ -129,11 +125,10 @@ function onGoogleSignIn() {
               Confirmar senha
             </FormLabel>
             <FormControl>
-              <Input
+              <AuthInput
                 type="password"
                 autocomplete="new-password"
                 placeholder="Confirmar senha"
-                :class="FIELD_CLASS"
                 v-bind="componentField"
               />
             </FormControl>
