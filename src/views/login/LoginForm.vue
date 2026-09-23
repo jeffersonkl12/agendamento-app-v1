@@ -2,7 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import * as z from 'zod'
-import IconGoogle from '@components/icons/IconGoogle.vue'
+import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
 import { Input } from '@components/ui/input'
@@ -41,15 +41,9 @@ function onGoogleSignIn() {
       Entre para gerenciar seus agendamentos
     </p>
 
-    <Button
-      type="button"
-      variant="outline"
-      class="h-12 w-full gap-2.5 rounded-xl border-[1.5px] border-border-subtle bg-card px-3.5 text-button-strong text-foreground"
-      @click="onGoogleSignIn"
-    >
-      <IconGoogle class="size-4.5" />
+    <GoogleButton @click="onGoogleSignIn">
       Continuar com Google
-    </Button>
+    </GoogleButton>
 
     <div class="flex w-full items-center gap-2.5">
       <Separator class="flex-1 bg-border-subtle" />
@@ -117,8 +111,7 @@ function onGoogleSignIn() {
 
     <p class="flex gap-1 text-caption-md text-muted-foreground">
       Não tem conta?
-      <!-- TODO: apontar para a rota de cadastro quando a tela "1b · Cadastro" existir -->
-      <RouterLink to="/TODO" class="text-tag text-primary">
+      <RouterLink to="/cadastro" class="text-tag text-primary">
         Criar conta
       </RouterLink>
     </p>
