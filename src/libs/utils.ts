@@ -44,6 +44,8 @@ const TEXT_STYLES = [
   "overline-lg",
   "overline-md",
   "display-sm",
+  "mark",
+  "tag-sm",
 ]
 
 const twMerge = extendTailwindMerge<'text-style'>({
