@@ -1,0 +1,179 @@
+{
+  "generated_at": "2026-08-21T13:09:34.966Z",
+  "total": 9,
+  "categories": {
+    "components": [
+      {
+        "slug": "duplicate-component-extraction",
+        "path": "components/duplicate-component-extraction.md",
+        "title": "Componente em 2+ telas extrai já na primeira",
+        "tags": [
+          "components",
+          "refactor",
+          "dry"
+        ],
+        "recurrence": "media",
+        "scope": "generic"
+      }
+    ],
+    "navbar": [
+      {
+        "slug": "mobile-menu-separate-buttons",
+        "path": "navbar/mobile-menu-separate-buttons.md",
+        "title": "Menu mobile com botões separados (abrir vs fechar)",
+        "tags": [
+          "navbar",
+          "mobile",
+          "accessibility"
+        ],
+        "recurrence": "baixa",
+        "scope": "generic"
+      },
+      {
+        "slug": "navbar-fixed-positioning",
+        "path": "navbar/navbar-fixed-positioning.md",
+        "title": "Navbar precisa ser fixed top-0",
+        "tags": [
+          "navbar",
+          "layout"
+        ],
+        "recurrence": "baixa",
+        "scope": "generic"
+      }
+    ],
+    "responsive": [
+      {
+        "slug": "container-intermediate-viewports",
+        "path": "responsive/container-intermediate-viewports.md",
+        "title": "Containers em viewports intermediários 1180–1792px",
+        "tags": [
+          "responsive",
+          "layout",
+          "tailwind"
+        ],
+        "recurrence": "media",
+        "scope": "generic"
+      }
+    ],
+    "semantica": [
+      {
+        "slug": "href-placeholder",
+        "path": "semantica/href-placeholder.md",
+        "title": "href=\"#\" proibido — usar /TODO",
+        "tags": [
+          "links",
+          "placeholders",
+          "semantics"
+        ],
+        "recurrence": "alta",
+        "scope": "generic"
+      }
+    ],
+    "tokens": [
+      {
+        "slug": "figma-svg-preserve-aspect-ratio",
+        "path": "tokens/figma-svg-preserve-aspect-ratio.md",
+        "title": "SVG export Figma — preserveAspectRatio não pode ser none",
+        "tags": [
+          "svg",
+          "css"
+        ],
+        "recurrence": "alta",
+        "scope": "generic"
+      },
+      {
+        "slug": "gradients-utility-class",
+        "path": "tokens/gradients-utility-class.md",
+        "title": "Gradientes em classe utilitária, nunca inline",
+        "tags": [
+          "gradients",
+          "css",
+          "tailwind"
+        ],
+        "recurrence": "media",
+        "scope": "generic"
+      },
+      {
+        "slug": "static-assets-import",
+        "path": "tokens/static-assets-import.md",
+        "title": "Imagens estáticas — import por alias, sem transformador no build",
+        "tags": [
+          "images",
+          "svg"
+        ],
+        "recurrence": "alta",
+        "scope": "generic"
+      },
+      {
+        "slug": "svg-currentcolor",
+        "path": "tokens/svg-currentcolor.md",
+        "title": "SVGs inline devem usar currentColor",
+        "tags": [
+          "svg",
+          "colors"
+        ],
+        "recurrence": "media",
+        "scope": "generic"
+      }
+    ]
+  },
+  "tags": {
+    "accessibility": [
+      "mobile-menu-separate-buttons"
+    ],
+    "colors": [
+      "svg-currentcolor"
+    ],
+    "components": [
+      "duplicate-component-extraction"
+    ],
+    "css": [
+      "figma-svg-preserve-aspect-ratio",
+      "gradients-utility-class"
+    ],
+    "dry": [
+      "duplicate-component-extraction"
+    ],
+    "gradients": [
+      "gradients-utility-class"
+    ],
+    "images": [
+      "static-assets-import"
+    ],
+    "layout": [
+      "container-intermediate-viewports",
+      "navbar-fixed-positioning"
+    ],
+    "links": [
+      "href-placeholder"
+    ],
+    "mobile": [
+      "mobile-menu-separate-buttons"
+    ],
+    "navbar": [
+      "mobile-menu-separate-buttons",
+      "navbar-fixed-positioning"
+    ],
+    "placeholders": [
+      "href-placeholder"
+    ],
+    "refactor": [
+      "duplicate-component-extraction"
+    ],
+    "responsive": [
+      "container-intermediate-viewports"
+    ],
+    "semantics": [
+      "href-placeholder"
+    ],
+    "svg": [
+      "figma-svg-preserve-aspect-ratio",
+      "static-assets-import",
+      "svg-currentcolor"
+    ],
+    "tailwind": [
+      "container-intermediate-viewports",
+      "gradients-utility-class"
+    ]
+  }
+}

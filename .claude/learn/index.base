@@ -1,0 +1,9 @@
+views:
+  - type: table
+    name: Tabela
+    order:
+      - file.name
+      - file.backlinks
+      - tags
+    columnSize:
+      file.backlinks: 200
