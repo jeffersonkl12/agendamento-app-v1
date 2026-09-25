@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { Card } from '@components/ui/card'
-import { ToggleGroup, ToggleGroupItem } from '@components/ui/toggle-group'
-import { type Period, stats } from '@data/home'
+import type { MetricsPeriod } from '@composables/useAppointmentMetrics'
 import { computed, ref } from 'vue'
+import { Card } from '@components/ui/card'
+import { Skeleton } from '@components/ui/skeleton'
+import { ToggleGroup, ToggleGroupItem } from '@components/ui/toggle-group'
+import { useAppointmentMetrics } from '@composables/useAppointmentMetrics'
 
-const period = ref<Period>('month')
+const period = ref<MetricsPeriod>('month')
 
-const PERIOD_OPTIONS: { value: Period, label: string }[] = [
+const PERIOD_OPTIONS: { value: MetricsPeriod, label: string }[] = [
   { value: 'month', label: 'Este mês' },
   { value: 'total', label: 'Total' },
 ]
 
-function isPeriod(value: unknown): value is Period {
-  return typeof value === 'string' && value in stats
+const { metricsByPeriod, isInitialLoading } = useAppointmentMetrics()
+
+function isPeriod(value: unknown): value is MetricsPeriod {
+  return PERIOD_OPTIONS.some(option => option.value === value)
 }
 
 // ToggleGroup type="single" emite undefined ao clicar no item já ativo — ignorado para manter sempre um período selecionado.
@@ -21,23 +25,12 @@ function selectPeriod(value: unknown) {
     period.value = value
 }
 
-function formatCurrency(value: number, fractionDigits: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  }).format(value)
-}
-
-const currentStats = computed(() => stats[period.value])
+const currentMetrics = computed(() => metricsByPeriod.value[period.value])
 
 const statCards = computed(() => [
-  { label: 'Faturamento', value: formatCurrency(currentStats.value.revenue, 0) },
-  { label: 'Agendamentos', value: String(currentStats.value.appointmentsCount) },
+  { label: 'Faturamento', value: currentMetrics.value.revenueLabel },
+  { label: 'Agendamentos', value: String(currentMetrics.value.appointmentsCount) },
 ])
-
-const avgTicket = computed(() => formatCurrency(currentStats.value.avgTicket, 2))
 </script>
 
 <template>
@@ -70,7 +63,10 @@ const avgTicket = computed(() => formatCurrency(currentStats.value.avgTicket, 2)
           {{ stat.label }}
         </dt>
         <dd class="font-heading text-foreground text-metric">
-          {{ stat.value }}
+          <Skeleton v-if="isInitialLoading" class="h-8 w-20 rounded-md" />
+          <template v-else>
+            {{ stat.value }}
+          </template>
         </dd>
       </Card>
     </dl>
@@ -81,11 +77,14 @@ const avgTicket = computed(() => formatCurrency(currentStats.value.avgTicket, 2)
           Ticket médio
         </dt>
         <dd class="font-heading text-metric-sm text-primary-foreground">
-          {{ avgTicket }}
+          <Skeleton v-if="isInitialLoading" class="h-7 w-24 rounded-md bg-primary-soft/40" />
+          <template v-else>
+            {{ currentMetrics.averageTicketLabel }}
+          </template>
         </dd>
       </dl>
       <p class="max-w-28 text-right text-caption text-primary-soft">
-        por atendimento no período
+        por atendimento confirmado no período
       </p>
     </Card>
   </section>

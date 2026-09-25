@@ -13,12 +13,20 @@ import { ref } from "vue";
 
 export const useBusinessProfileStore = defineStore("business-profile", () => {
 	const profile = ref<BusinessProfile | null>(null);
-	const { isLoading, error, run } = useRequestState();
+	const hasLoaded = ref(false);
+	const { isLoading, error, errorStatus, run } = useRequestState();
 
 	async function fetchMyProfile() {
 		const result = await run(() => getMyBusinessProfile(), { onError: isNotFoundError });
 		profile.value = result ?? null;
+		// 404 é estado válido ("ainda não criado") — conta como carregado.
+		hasLoaded.value = error.value === null;
 		return result;
+	}
+
+	async function ensureMyProfile() {
+		if (!hasLoaded.value) await fetchMyProfile();
+		return profile.value;
 	}
 
 	async function createProfile(input: CreateBusinessProfileInput) {
@@ -33,5 +41,15 @@ export const useBusinessProfileStore = defineStore("business-profile", () => {
 		return result;
 	}
 
-	return { profile, isLoading, error, fetchMyProfile, createProfile, updateProfile };
+	return {
+		profile,
+		hasLoaded,
+		isLoading,
+		error,
+		errorStatus,
+		fetchMyProfile,
+		ensureMyProfile,
+		createProfile,
+		updateProfile,
+	};
 });

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
+import { toast } from 'vue-sonner'
 import * as z from 'zod'
 import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
 import { AuthInput } from '@components/auth/auth-input'
@@ -8,6 +9,7 @@ import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
 import { Separator } from '@components/ui/separator'
+import { useAuth } from '@composables/useAuth'
 
 const MESSAGE_CLASS = 'text-label text-error'
 
@@ -28,12 +30,25 @@ const schema = toTypedSchema(
     }),
 )
 
-function onSubmit() {
-  // TODO: implementar quando a camada de auth (service/store) existir — ver Decisão 5 do manifesto
+const { signUp, signInWithGoogle, isLoading } = useAuth()
+
+// A API não recebe "confirmar senha" — a checagem é só do front (RN-AU02, feita no schema).
+async function onSubmit(values: Record<string, unknown>) {
+  const result = await signUp({
+    name: String(values.name),
+    email: String(values.email),
+    password: String(values.password),
+  })
+  if (result.success)
+    toast.success(result.message ?? '', { duration: 10000 })
+  else if (result.message)
+    toast.error(result.message)
 }
 
-function onGoogleSignIn() {
-  // TODO: implementar quando a camada de auth existir — ver Decisão 5 do manifesto
+async function onGoogleSignIn() {
+  const result = await signInWithGoogle()
+  if (!result.success && result.message)
+    toast.error(result.message)
 }
 </script>
 
@@ -51,7 +66,7 @@ function onGoogleSignIn() {
       </AuthHeaderDescription>
     </AuthHeader>
 
-    <GoogleButton @click="onGoogleSignIn">Cadastrar com Google</GoogleButton>
+    <GoogleButton :disabled="isLoading" @click="onGoogleSignIn">Cadastrar com Google</GoogleButton>
 
     <div class="flex w-full items-center gap-2.5">
       <Separator class="flex-1 bg-border-subtle" />
@@ -137,9 +152,10 @@ function onGoogleSignIn() {
 
       <Button
         type="submit"
+        :disabled="isLoading"
         class="h-12 w-full rounded-xl px-3.5 text-button-strong hover:bg-primary/90"
       >
-        Criar conta
+        {{ isLoading ? 'Criando conta...' : 'Criar conta' }}
       </Button>
     </Form>
 

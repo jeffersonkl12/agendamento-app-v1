@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
+import { toast } from 'vue-sonner'
 import * as z from 'zod'
 import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
 import { AuthInput } from '@components/auth/auth-input'
@@ -8,18 +9,26 @@ import { GoogleButton } from '@components/auth/google-button'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
 import { Separator } from '@components/ui/separator'
+import { useAuth } from '@composables/useAuth'
 
+// O better-auth só tem login por e-mail (sem plugin de username) — §2.
 const schema = toTypedSchema(z.object({
-  identifier: z.string({ message: 'Informe seu e-mail ou usuário' }).min(1, 'Informe seu e-mail ou usuário'),
+  email: z.string({ message: 'Informe seu e-mail' }).trim().min(1, 'Informe seu e-mail').email('Informe um e-mail válido'),
   password: z.string({ message: 'Informe sua senha' }).min(1, 'Informe sua senha'),
 }))
 
-function onSubmit() {
-  // TODO: autenticar quando a camada de auth (service/store) existir — ver Decisão 5 do manifesto
+const { signIn, signInWithGoogle, isLoading } = useAuth()
+
+async function onSubmit(values: Record<string, unknown>) {
+  const result = await signIn({ email: String(values.email), password: String(values.password) })
+  if (!result.success && result.message)
+    toast.error(result.message)
 }
 
-function onGoogleSignIn() {
-  // TODO: login com Google quando a camada de auth existir — ver Decisão 5 do manifesto
+async function onGoogleSignIn() {
+  const result = await signInWithGoogle()
+  if (!result.success && result.message)
+    toast.error(result.message)
 }
 </script>
 
@@ -37,7 +46,7 @@ function onGoogleSignIn() {
       </AuthHeaderDescription>
     </AuthHeader>
 
-    <GoogleButton @click="onGoogleSignIn">
+    <GoogleButton :disabled="isLoading" @click="onGoogleSignIn">
       Continuar com Google
     </GoogleButton>
 
@@ -53,16 +62,17 @@ function onGoogleSignIn() {
       @submit="onSubmit"
     >
       <div class="flex flex-col gap-2.5">
-        <FormField v-slot="{ componentField }" name="identifier">
+        <FormField v-slot="{ componentField }" name="email">
           <FormItem>
             <FormLabel class="sr-only">
-              E-mail ou usuário
+              E-mail
             </FormLabel>
             <FormControl>
               <AuthInput
-                type="text"
-                autocomplete="username"
-                placeholder="E-mail ou usuário"
+                type="email"
+                autocomplete="email"
+                inputmode="email"
+                placeholder="E-mail"
                 v-bind="componentField"
               />
             </FormControl>
@@ -96,9 +106,10 @@ function onGoogleSignIn() {
 
       <Button
         type="submit"
+        :disabled="isLoading"
         class="h-12 w-full rounded-xl px-3.5 text-button-strong hover:bg-primary/90"
       >
-        Entrar
+        {{ isLoading ? 'Entrando...' : 'Entrar' }}
       </Button>
     </Form>
 

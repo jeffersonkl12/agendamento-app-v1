@@ -3,12 +3,11 @@ import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/
 import { AuthInput } from '@components/auth/auth-input'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
+import { useAuth } from '@composables/useAuth'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import * as z from 'zod'
-
-const router = useRouter()
 
 const schema = toTypedSchema(
   z
@@ -24,10 +23,14 @@ const schema = toTypedSchema(
     }),
 )
 
-function onSubmit() {
-  // TODO: chamar a camada de auth (redefinição de senha) quando a skill de dados dinâmicos existir.
-  toast.success('Senha redefinida.')
-  router.push('/login')
+const { resetPassword, resetTokenError, isLoading } = useAuth()
+
+async function onSubmit(values: Record<string, unknown>) {
+  const result = await resetPassword(String(values.password))
+  if (result.success && result.message)
+    toast.success(result.message)
+  else if (result.message)
+    toast.error(result.message)
 }
 </script>
 
@@ -43,8 +46,18 @@ function onSubmit() {
       </AuthHeaderDescription>
     </AuthHeader>
 
+    <template v-if="resetTokenError">
+      <p role="alert" class="mt-5 text-center text-error text-paragraph">
+        {{ resetTokenError }}
+      </p>
+      <RouterLink to="/recuperar-senha" class="text-primary text-tag">
+        Solicitar novo link
+      </RouterLink>
+    </template>
+
     <!-- mt-5 reproduz o Spacer (yixVO, 6px) + gap da seção: ~34px entre subtítulo e primeiro campo -->
     <Form
+      v-else
       class="mt-5 flex w-full flex-col gap-3.5"
       :validation-schema="schema"
       @submit="onSubmit"
@@ -81,6 +94,7 @@ function onSubmit() {
 
       <Button
         type="submit"
+        :disabled="isLoading"
         class="h-12 w-full rounded-xl px-3.5 text-button-strong hover:bg-primary/90"
       >
         Salvar nova senha

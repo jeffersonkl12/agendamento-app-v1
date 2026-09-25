@@ -11,6 +11,8 @@ export interface SignUpEmailInput {
 	email: string;
 	password: string;
 	phoneNumber?: string;
+	/** Para onde o link de verificação de e-mail redireciona depois de confirmar. */
+	callbackURL?: string;
 }
 
 export interface SignInEmailInput {
@@ -26,8 +28,9 @@ export async function signInWithEmail(input: SignInEmailInput) {
 	return authClient.signIn.email(input);
 }
 
-export async function signInWithGoogle() {
-	return authClient.signIn.social({ provider: "google" });
+// Sem callbackURL absoluto o better-auth volta pra URL da API, não pro painel.
+export async function signInWithGoogle(callbackURL: string) {
+	return authClient.signIn.social({ provider: "google", callbackURL });
 }
 
 export async function signOut() {

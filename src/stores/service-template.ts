@@ -9,16 +9,33 @@ import {
 	updateServiceTemplate,
 } from "@services/service-template";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 export const useServiceTemplateStore = defineStore("service-template", () => {
 	const templates = ref<ServiceTemplate[]>([]);
-	const { isLoading, error, run } = useRequestState();
+	const hasLoaded = ref(false);
+	const { isLoading, error, errorStatus, run } = useRequestState();
+
+	const templateById = computed(() => {
+		const map = new Map<string, ServiceTemplate>();
+		for (const template of templates.value) {
+			map.set(template.id, template);
+		}
+		return map;
+	});
 
 	async function fetchTemplates() {
 		const result = await run(() => listServiceTemplates());
-		if (result) templates.value = result;
+		if (result) {
+			templates.value = result;
+			hasLoaded.value = true;
+		}
 		return result;
+	}
+
+	async function ensureTemplates() {
+		if (!hasLoaded.value) await fetchTemplates();
+		return templates.value;
 	}
 
 	async function createTemplate(input: CreateServiceTemplateInput) {
@@ -50,9 +67,13 @@ export const useServiceTemplateStore = defineStore("service-template", () => {
 
 	return {
 		templates,
+		templateById,
+		hasLoaded,
 		isLoading,
 		error,
+		errorStatus,
 		fetchTemplates,
+		ensureTemplates,
 		createTemplate,
 		updateTemplate,
 		removeTemplate,

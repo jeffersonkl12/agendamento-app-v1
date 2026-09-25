@@ -1,51 +1,50 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { SegmentedControl } from '@components/shared/segmented-control'
 import { Drawer, DrawerContent } from '@components/ui/drawer'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
-import { scheduleSettings } from '@data/configuracao'
 
-const INTERVAL_OPTIONS = [
-  { value: '15', label: '15 min' },
-  { value: '30', label: '30 min' },
-  { value: '45', label: '45 min' },
-  { value: '60', label: '60 min' },
-]
-
-function buildTimeOptions(): string[] {
-  const times: string[] = []
-  for (let minutes = 0; minutes < 24 * 60; minutes += 30) {
-    const hours = Math.floor(minutes / 60).toString().padStart(2, '0')
-    const mins = (minutes % 60).toString().padStart(2, '0')
-    times.push(`${hours}:${mins}`)
-  }
-  return times
+interface ScheduleHoursValue {
+  startTime: string
+  endTime: string
+  intervalMinutes: number
 }
-
-const TIME_OPTIONS = buildTimeOptions()
 
 const props = defineProps<{
   open: boolean
+  hours: ScheduleHoursValue
+  timeOptions: readonly string[]
+  intervalOptions: readonly number[]
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  'save': [value: ScheduleHoursValue]
 }>()
 
-const startTime = ref(scheduleSettings.startTime)
-const endTime = ref(scheduleSettings.endTime)
-const intervalMinutes = ref(String(scheduleSettings.intervalMinutes))
+const startTime = ref(props.hours.startTime)
+const endTime = ref(props.hours.endTime)
+const intervalMinutes = ref(String(props.hours.intervalMinutes))
 
+const segmentedIntervalOptions = computed(() =>
+  props.intervalOptions.map(minutes => ({ value: String(minutes), label: `${minutes} min` })),
+)
+
+// Rascunho local: reabrir o sheet descarta o que não foi salvo.
 watch(() => props.open, (open) => {
   if (!open)
     return
-  startTime.value = scheduleSettings.startTime
-  endTime.value = scheduleSettings.endTime
-  intervalMinutes.value = String(scheduleSettings.intervalMinutes)
+  startTime.value = props.hours.startTime
+  endTime.value = props.hours.endTime
+  intervalMinutes.value = String(props.hours.intervalMinutes)
 })
 
 function save() {
-  // TODO: persistir horário de atendimento quando a camada dinâmica existir
+  emit('save', {
+    startTime: startTime.value,
+    endTime: endTime.value,
+    intervalMinutes: Number(intervalMinutes.value),
+  })
   emit('update:open', false)
 }
 
@@ -75,7 +74,7 @@ const triggerClass = 'h-auto w-full rounded-xl border-border-subtle bg-white px-
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
-              <SelectItem v-for="time in TIME_OPTIONS" :key="time" :value="time">
+              <SelectItem v-for="time in props.timeOptions" :key="time" :value="time">
                 {{ time }}
               </SelectItem>
             </SelectContent>
@@ -89,7 +88,7 @@ const triggerClass = 'h-auto w-full rounded-xl border-border-subtle bg-white px-
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">
-              <SelectItem v-for="time in TIME_OPTIONS" :key="time" :value="time">
+              <SelectItem v-for="time in props.timeOptions" :key="time" :value="time">
                 {{ time }}
               </SelectItem>
             </SelectContent>
@@ -101,7 +100,7 @@ const triggerClass = 'h-auto w-full rounded-xl border-border-subtle bg-white px-
         <span class="text-label-strong text-muted-foreground">Intervalo entre atendimentos</span>
         <SegmentedControl
           v-model="intervalMinutes"
-          :options="INTERVAL_OPTIONS"
+          :options="segmentedIntervalOptions"
           aria-label="Intervalo entre atendimentos"
         />
       </div>
@@ -111,7 +110,7 @@ const triggerClass = 'h-auto w-full rounded-xl border-border-subtle bg-white px-
           Cancelar
         </button>
         <button type="button" class="flex-1 rounded-xl bg-primary p-3.5 text-item-title text-primary-foreground" @click="save">
-          Salvar
+          Aplicar
         </button>
       </div>
     </DrawerContent>

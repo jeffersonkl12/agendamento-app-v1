@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { PhSignOut, PhUser } from '@phosphor-icons/vue'
-import { ref } from 'vue'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@components/ui/dropdown-menu'
-import { LogoutDialog } from '@components/shared/logout-dialog'
-import { business } from '@data/business'
 
-const logoutOpen = ref(false)
+const props = defineProps<{
+  initials: string
+}>()
+
+const emit = defineEmits<{
+  logout: []
+}>()
 </script>
 
 <template>
@@ -14,7 +17,8 @@ const logoutOpen = ref(false)
       aria-label="Abrir menu do perfil"
       class="bg-primary text-primary-foreground text-tag focus-visible:ring-ring flex size-8.5 items-center justify-center rounded-full outline-none focus-visible:ring-2"
     >
-      {{ business.initials }}
+      <span v-if="props.initials">{{ props.initials }}</span>
+      <PhUser v-else class="size-4" aria-hidden="true" />
     </DropdownMenuTrigger>
 
     <DropdownMenuContent
@@ -32,13 +36,11 @@ const logoutOpen = ref(false)
       <DropdownMenuItem
         variant="destructive"
         class="gap-2.5 rounded-lg px-3 py-2.75 text-tag-lg"
-        @click="logoutOpen = true"
+        @click="emit('logout')"
       >
         <PhSignOut class="size-4" aria-hidden="true" />
         Sair
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
-
-  <LogoutDialog v-model:open="logoutOpen" />
 </template>

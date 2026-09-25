@@ -13,12 +13,17 @@ import { ref } from "vue";
 
 export const useServiceTemplateQuestionStore = defineStore("service-template-question", () => {
 	const questionsByTemplateId = ref<Record<string, ServiceTemplateQuestion[]>>({});
-	const { isLoading, error, run } = useRequestState();
+	const { isLoading, error, errorStatus, run } = useRequestState();
 
 	async function fetchQuestions(templateId: string) {
 		const result = await run(() => listServiceTemplateQuestions(templateId));
 		if (result) questionsByTemplateId.value[templateId] = result;
 		return result;
+	}
+
+	/** Modelo recém-criado não tem perguntas — evita um GET só pra descobrir uma lista vazia. */
+	function initializeEmpty(templateId: string) {
+		questionsByTemplateId.value[templateId] = [];
 	}
 
 	async function createQuestion(templateId: string, input: CreateServiceTemplateQuestionInput) {
@@ -62,7 +67,9 @@ export const useServiceTemplateQuestionStore = defineStore("service-template-que
 		questionsByTemplateId,
 		isLoading,
 		error,
+		errorStatus,
 		fetchQuestions,
+		initializeEmpty,
 		createQuestion,
 		updateQuestion,
 		removeQuestion,

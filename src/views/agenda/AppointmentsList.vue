@@ -1,59 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { AppointmentRow } from '@components/agenda/appointment-row'
-import { appointments } from '@data/agendamentos'
+import { Skeleton } from '@components/ui/skeleton'
+import { useAppointmentAgenda } from '@composables/useAppointmentAgenda'
 
-const dateHeaderFormatter = new Intl.DateTimeFormat('pt-BR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-})
+const emit = defineEmits<{
+  select: [id: string]
+}>()
 
-// `new Date('YYYY-MM-DD')` é interpretado como UTC e volta um dia em fusos negativos (BRT);
-// montar a data pelos componentes garante o dia local correto.
-function parseLocalDate(isoDate: string): Date {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}
-
-interface AppointmentGroup {
-  date: string
-  dateLabel: string
-  items: typeof appointments
-}
-
-const groups = computed<AppointmentGroup[]>(() => {
-  const sorted = [...appointments].sort((a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date)))
-
-  const byDate = new Map<string, typeof appointments>()
-  for (const appointment of sorted) {
-    const bucket = byDate.get(appointment.date) ?? []
-    bucket.push(appointment)
-    byDate.set(appointment.date, bucket)
-  }
-
-  return [...byDate.entries()].map(([date, items]) => ({
-    date,
-    dateLabel: capitalize(dateHeaderFormatter.format(parseLocalDate(date))),
-    items,
-  }))
-})
+const { groupedByDate, isInitialLoading } = useAppointmentAgenda()
 </script>
 
 <template>
   <section aria-label="Lista de agendamentos" class="flex flex-col gap-2">
-    <template v-for="group in groups" :key="group.date">
+    <div v-if="isInitialLoading" class="flex flex-col gap-2" aria-busy="true">
+      <Skeleton v-for="index in 3" :key="index" class="h-16 w-full rounded-2xl" />
+    </div>
+
+    <p v-else-if="!groupedByDate.length" class="text-paragraph text-muted-foreground">
+      Nenhum agendamento por enquanto. Eles aparecem aqui assim que os clientes agendarem pelo WhatsApp.
+    </p>
+
+    <template v-for="group in groupedByDate" v-else :key="group.date">
       <h2 class="text-label-strong text-muted-foreground">
         {{ group.dateLabel }}
       </h2>
 
       <ul class="flex flex-col gap-2">
         <li v-for="appointment in group.items" :key="appointment.id">
-          <AppointmentRow :appointment="appointment" />
+          <AppointmentRow :appointment="appointment" @select="emit('select', $event)" />
         </li>
       </ul>
     </template>

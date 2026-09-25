@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Button } from '@components/ui/button'
+import { toast } from 'vue-sonner'
 import { LogoutDialog } from '@components/shared/logout-dialog'
+import { Button } from '@components/ui/button'
+import { useAuth } from '@composables/useAuth'
 import Plan from '@views/perfil/Plan.vue'
 import ProfileHeader from '@views/perfil/ProfileHeader.vue'
 
 const logoutOpen = ref(false)
+
+const { logout } = useAuth()
+
+async function confirmLogout() {
+  const result = await logout()
+  if (!result.success && result.message)
+    toast.error(result.message)
+}
 </script>
 
 <template>
@@ -25,5 +35,5 @@ const logoutOpen = ref(false)
     Sair da conta
   </Button>
 
-  <LogoutDialog v-model:open="logoutOpen" />
+  <LogoutDialog v-model:open="logoutOpen" @confirm="confirmLogout" />
 </template>

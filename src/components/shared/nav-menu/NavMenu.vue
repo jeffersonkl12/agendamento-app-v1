@@ -28,6 +28,11 @@ const navItems: NavItem[] = [
   { label: 'Configurar agendamentos', to: '/configurar-agendamentos', icon: PhSlidersHorizontal },
 ]
 
+// "/" só casa exato; as demais também casam sub-rotas (ex.: /modelo-atendimento/:id).
+function isActive(to: string) {
+  return to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`)
+}
+
 watch(() => route.path, () => emit('update:open', false))
 </script>
 
@@ -60,7 +65,7 @@ watch(() => route.path, () => emit('update:open', false))
           :to="item.to"
           :class="[
             'flex items-center gap-3 rounded-xl px-3 py-3.25 text-item-title',
-            route.path === item.to ? 'bg-primary-soft text-primary' : 'text-foreground',
+            isActive(item.to) ? 'bg-primary-soft text-primary' : 'text-foreground',
           ]"
         >
           <component :is="item.icon" class="size-4.75" aria-hidden="true" />

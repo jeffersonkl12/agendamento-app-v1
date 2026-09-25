@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { ref } from 'vue'
-import { AppointmentDetailsSheet } from '@components/agenda/appointment-details-sheet'
+import type { AppointmentSummary } from '@composables/useAppointmentSummary'
 import { Badge } from '@components/ui/badge'
 import { Card } from '@components/ui/card'
 import { cn } from '@/libs/utils'
-import type { Appointment } from '@data/agendamentos'
 
-// Sem <slot /> por design: o card sempre renderiza os mesmos 4 campos de um Appointment,
+// Sem <slot /> por design: o card sempre renderiza os mesmos 4 campos de um agendamento,
 // não há conteúdo projetável — props tipadas são o contrato mais honesto aqui (R5).
 const props = defineProps<{
-  appointment: Appointment
+  appointment: AppointmentSummary
   class?: HTMLAttributes['class']
 }>()
 
-const detailsOpen = ref(false)
+const emit = defineEmits<{
+  select: [id: string]
+}>()
 </script>
 
 <template>
-  <button type="button" class="w-full text-left" @click="detailsOpen = true">
+  <button type="button" class="w-full text-left" @click="emit('select', props.appointment.id)">
     <Card
       data-slot="appointment-row"
       :class="cn('flex-row items-center gap-4 rounded-2xl px-4 py-3.5 ring-0', props.class)"
@@ -32,7 +32,7 @@ const detailsOpen = ref(false)
           {{ appointment.clientName }}
         </span>
         <span class="truncate text-label-lg text-muted-foreground">
-          {{ appointment.service }}
+          {{ appointment.templateName }}
         </span>
       </div>
 
@@ -41,6 +41,4 @@ const detailsOpen = ref(false)
       </Badge>
     </Card>
   </button>
-
-  <AppointmentDetailsSheet v-model:open="detailsOpen" :appointment="appointment" />
 </template>

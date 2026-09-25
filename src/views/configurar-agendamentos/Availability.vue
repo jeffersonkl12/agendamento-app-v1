@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import type { WeekdayKey } from '@composables/useSchedulingConfigForm'
 import { ToggleGroup, ToggleGroupItem } from '@components/ui/toggle-group'
-import { weekDays } from '@data/configuracao'
-import { ref } from 'vue'
+import { WEEKDAYS } from '@composables/useSchedulingConfigForm'
 
-const activeDays = ref<string[]>(weekDays.filter((day) => day.active).map((day) => day.id))
+const enabledDays = defineModel<WeekdayKey[]>('enabledDays', { required: true })
 </script>
 
 <template>
@@ -18,16 +18,16 @@ const activeDays = ref<string[]>(weekDays.filter((day) => day.active).map((day) 
       </h2>
 
       <ToggleGroup
-        v-model="activeDays"
+        v-model="enabledDays"
         type="multiple"
         :spacing="2"
         aria-labelledby="availability-days-title"
         class="w-full flex-wrap"
       >
         <ToggleGroupItem
-          v-for="day in weekDays"
-          :key="day.id"
-          :value="day.id"
+          v-for="day in WEEKDAYS"
+          :key="day.key"
+          :value="day.key"
           class="h-9.5 rounded-xl bg-surface px-3.5 text-muted-foreground text-tag hover:bg-surface hover:text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
         >
           {{ day.label }}

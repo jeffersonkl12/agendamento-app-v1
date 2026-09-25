@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { QuestionDraft, QuestionType } from '@composables/useServiceTemplateEditor'
 import { toTypedSchema } from '@vee-validate/zod'
 import { PhX } from '@phosphor-icons/vue'
 import { RadioGroupItem } from 'reka-ui'
@@ -12,8 +13,6 @@ import { RadioGroup } from '@components/ui/radio-group'
 import { Switch } from '@components/ui/switch'
 import { cn } from '@/libs/utils'
 
-type QuestionType = 'texto' | 'escolha-unica' | 'multipla-escolha' | 'numero' | 'sim-nao'
-
 interface QuestionTypeOption {
   value: QuestionType
   label: string
@@ -21,37 +20,45 @@ interface QuestionTypeOption {
 }
 
 const QUESTION_TYPES: QuestionTypeOption[] = [
-  { value: 'texto', label: 'Texto livre', hint: 'Cliente escreve o que quiser, sem opções fixas' },
-  { value: 'escolha-unica', label: 'Escolha única', hint: 'Cliente escolhe só uma opção da lista' },
-  { value: 'multipla-escolha', label: 'Múltipla escolha', hint: 'Cliente pode marcar mais de uma opção' },
-  { value: 'numero', label: 'Número', hint: 'Cliente informa uma quantidade' },
-  { value: 'sim-nao', label: 'Sim ou não', hint: 'Resposta simples, sim ou não' },
+  { value: 'TEXT', label: 'Texto livre', hint: 'Cliente escreve o que quiser, sem opções fixas' },
+  { value: 'SINGLE', label: 'Escolha única', hint: 'Cliente escolhe só uma opção da lista' },
+  { value: 'MULTI', label: 'Múltipla escolha', hint: 'Cliente pode marcar mais de uma opção' },
+  { value: 'NUMBER', label: 'Número', hint: 'Cliente informa uma quantidade' },
+  { value: 'BOOLEAN', label: 'Sim ou não', hint: 'Resposta simples, sim ou não' },
 ]
+
+const CHOICE_TYPES: QuestionType[] = ['SINGLE', 'MULTI']
 
 const props = defineProps<{
   open: boolean
+  isSubmitting?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
+  'submit': [draft: QuestionDraft]
 }>()
 
 const schema = toTypedSchema(z.object({
-  question: z.string().min(1, 'Informe a pergunta'),
+  title: z.string().trim().min(1, 'Informe a pergunta'),
   required: z.boolean(),
-  type: z.enum(['texto', 'escolha-unica', 'multipla-escolha', 'numero', 'sim-nao']),
-  options: z.array(z.object({ label: z.string(), price: z.string() })),
-  unitPrice: z.string(),
-  yesPrice: z.string(),
-  noPrice: z.string(),
-}))
+  type: z.enum(['TEXT', 'SINGLE', 'MULTI', 'NUMBER', 'BOOLEAN']),
+  // Inputs type="number" chegam como number pelo v-model — coerce normaliza tudo pra string.
+  options: z.array(z.object({ label: z.string(), price: z.coerce.string() })),
+  unitPrice: z.coerce.string(),
+  yesPrice: z.coerce.string(),
+  noPrice: z.coerce.string(),
+}).refine(
+  values => !CHOICE_TYPES.includes(values.type) || values.options.some(option => option.label.trim()),
+  { message: 'Adicione ao menos uma opção com nome', path: ['options'] }, // RN-P02
+))
 
-const { handleSubmit, values, resetForm } = useForm({
+const { handleSubmit, values, resetForm, errors } = useForm({
   validationSchema: schema,
   initialValues: {
-    question: '',
+    title: '',
     required: true,
-    type: 'texto',
+    type: 'TEXT' as QuestionType,
     options: [{ label: '', price: '' }, { label: '', price: '' }],
     unitPrice: '',
     yesPrice: '',
@@ -65,10 +72,7 @@ function addOption() {
   pushOption({ label: '', price: '' })
 }
 
-const onSubmit = handleSubmit(() => {
-  // TODO: persistir a nova pergunta quando a camada dinâmica existir
-  emit('update:open', false)
-})
+const onSubmit = handleSubmit(draft => emit('submit', draft))
 
 function cancel() {
   emit('update:open', false)
@@ -92,7 +96,7 @@ watch(() => props.open, (open) => {
           Nova pergunta
         </h2>
 
-        <FormField v-slot="{ componentField }" name="question">
+        <FormField v-slot="{ componentField }" name="title">
           <FormItem class="gap-1.5">
             <FormLabel class="text-label-strong-lg text-muted-foreground">
               Qual é a pergunta?
@@ -162,7 +166,7 @@ watch(() => props.open, (open) => {
           </FormField>
         </div>
 
-        <div v-if="values.type === 'escolha-unica' || values.type === 'multipla-escolha'" class="flex flex-col gap-2">
+        <div v-if="values.type && CHOICE_TYPES.includes(values.type)" class="flex flex-col gap-2">
           <p class="text-label-strong-lg text-muted-foreground">
             Opções
           </p>
@@ -193,10 +197,12 @@ watch(() => props.open, (open) => {
                 </div>
               </FormField>
 
+              <!-- RN-P07: pergunta de escolha não pode ficar sem nenhuma opção. -->
               <button
                 type="button"
                 aria-label="Remover opção"
-                class="flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error"
+                :disabled="optionFields.length === 1"
+                class="flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error disabled:opacity-40"
                 @click="removeOption(index)"
               >
                 <PhX class="size-4" aria-hidden="true" />
@@ -204,12 +210,16 @@ watch(() => props.open, (open) => {
             </div>
           </div>
 
+          <p v-if="errors.options" role="alert" class="text-error text-label">
+            {{ errors.options }}
+          </p>
+
           <button type="button" class="w-fit text-tag text-primary" @click="addOption">
             + Adicionar opção
           </button>
         </div>
 
-        <div v-else-if="values.type === 'numero'" class="flex flex-col gap-2">
+        <div v-else-if="values.type === 'NUMBER'" class="flex flex-col gap-2">
           <p class="text-label-strong-lg text-muted-foreground">
             Valor por unidade
           </p>
@@ -231,7 +241,7 @@ watch(() => props.open, (open) => {
           </FormField>
         </div>
 
-        <div v-else-if="values.type === 'sim-nao'" class="flex flex-col gap-2">
+        <div v-else-if="values.type === 'BOOLEAN'" class="flex flex-col gap-2">
           <p class="text-label-strong-lg text-muted-foreground">
             Valor por resposta
           </p>
@@ -278,8 +288,12 @@ watch(() => props.open, (open) => {
           <button type="button" class="flex-1 rounded-xl bg-surface p-3.5 text-item-title text-foreground" @click="cancel">
             Cancelar
           </button>
-          <button type="submit" class="flex-1 rounded-xl bg-primary p-3.5 text-item-title text-primary-foreground">
-            Salvar pergunta
+          <button
+            type="submit"
+            :disabled="props.isSubmitting"
+            class="flex-1 rounded-xl bg-primary p-3.5 text-item-title text-primary-foreground disabled:opacity-60"
+          >
+            {{ props.isSubmitting ? 'Salvando...' : 'Salvar pergunta' }}
           </button>
         </div>
       </form>

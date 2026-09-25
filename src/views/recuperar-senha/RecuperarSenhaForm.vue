@@ -3,6 +3,7 @@ import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/
 import { AuthInput } from '@components/auth/auth-input'
 import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
+import { useAuth } from '@composables/useAuth'
 import { toTypedSchema } from '@vee-validate/zod'
 import { RouterLink } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -18,9 +19,14 @@ const schema = toTypedSchema(
   }),
 )
 
-function onSubmit() {
-  // TODO: enviar link de recuperação quando a camada de auth (service/store) existir — ver Decisão 5 do manifesto
-  toast.success('Se o e-mail estiver cadastrado, você receberá um link em instantes.')
+const { requestPasswordReset, isLoading } = useAuth()
+
+async function onSubmit(values: Record<string, unknown>) {
+  const result = await requestPasswordReset(String(values.email))
+  if (result.success && result.message)
+    toast.success(result.message)
+  else if (result.message)
+    toast.error(result.message)
 }
 </script>
 
@@ -63,6 +69,7 @@ function onSubmit() {
 
       <Button
         type="submit"
+        :disabled="isLoading"
         class="h-12 w-full rounded-xl px-3.5 text-button-strong hover:bg-primary/90"
       >
         Enviar link de recuperação

@@ -13,11 +13,15 @@ import { ref } from "vue";
 export const useAppointmentStore = defineStore("appointment", () => {
 	const appointments = ref<Appointment[]>([]);
 	const detailsById = ref<Record<string, AppointmentDetail>>({});
-	const { isLoading, error, run } = useRequestState();
+	const hasLoaded = ref(false);
+	const { isLoading, error, errorStatus, run } = useRequestState();
 
 	async function fetchAppointments() {
 		const result = await run(() => listAppointments());
-		if (result) appointments.value = result;
+		if (result) {
+			appointments.value = result;
+			hasLoaded.value = true;
+		}
 		return result;
 	}
 
@@ -49,8 +53,10 @@ export const useAppointmentStore = defineStore("appointment", () => {
 	return {
 		appointments,
 		detailsById,
+		hasLoaded,
 		isLoading,
 		error,
+		errorStatus,
 		fetchAppointments,
 		fetchAppointmentDetail,
 		cancel,

@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 
 export const useCustomerStore = defineStore("customer", () => {
 	const customers = ref<Customer[]>([]);
+	const hasLoaded = ref(false);
 	const { isLoading, error, run } = useRequestState();
 
 	const customerById = computed(() => {
@@ -17,7 +18,10 @@ export const useCustomerStore = defineStore("customer", () => {
 
 	async function fetchCustomers() {
 		const result = await run(() => listCustomers());
-		if (result) customers.value = result;
+		if (result) {
+			customers.value = result;
+			hasLoaded.value = true;
+		}
 		return result;
 	}
 
@@ -30,5 +34,13 @@ export const useCustomerStore = defineStore("customer", () => {
 		return result;
 	}
 
-	return { customers, isLoading, error, customerById, fetchCustomers, renameCustomer };
+	return {
+		customers,
+		hasLoaded,
+		isLoading,
+		error,
+		customerById,
+		fetchCustomers,
+		renameCustomer,
+	};
 });

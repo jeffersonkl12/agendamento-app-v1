@@ -1,30 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { AppointmentRow } from '@components/agenda/appointment-row'
-import { appointments } from '@data/agendamentos'
+import { Skeleton } from '@components/ui/skeleton'
+import { useAppointmentAgenda } from '@composables/useAppointmentAgenda'
+import { formatWeekdayDayMonth } from '@/libs/format'
 
 const props = defineProps<{ selectedDate: string }>()
 
-const dayLabelFormatter = new Intl.DateTimeFormat('pt-BR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-})
+const emit = defineEmits<{
+  select: [id: string]
+}>()
 
-// `new Date('YYYY-MM-DD')` é interpretado como UTC e volta um dia em fusos negativos (BRT);
-// montar a data pelos componentes garante o dia local correto.
-function parseLocalDate(isoDate: string): Date {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
+const { summariesOn, isInitialLoading } = useAppointmentAgenda()
 
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
-}
+const dayLabel = computed(() => formatWeekdayDayMonth(props.selectedDate))
 
-const dayLabel = computed(() => capitalize(dayLabelFormatter.format(parseLocalDate(props.selectedDate))))
-
-const dayAppointments = computed(() => appointments.filter(appointment => appointment.date === props.selectedDate))
+const dayAppointments = computed(() => summariesOn(props.selectedDate))
 </script>
 
 <template>
@@ -35,9 +26,13 @@ const dayAppointments = computed(() => appointments.filter(appointment => appoin
       </h2>
     </header>
 
-    <ul v-if="dayAppointments.length" class="flex flex-col gap-3">
+    <div v-if="isInitialLoading" class="flex flex-col gap-3" aria-busy="true">
+      <Skeleton v-for="index in 2" :key="index" class="h-16 w-full rounded-2xl" />
+    </div>
+
+    <ul v-else-if="dayAppointments.length" class="flex flex-col gap-3">
       <li v-for="appointment in dayAppointments" :key="appointment.id">
-        <AppointmentRow :appointment="appointment" />
+        <AppointmentRow :appointment="appointment" @select="emit('select', $event)" />
       </li>
     </ul>
 
