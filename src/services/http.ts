@@ -1,10 +1,11 @@
+import { resolveApiBaseUrl } from "@libs/api-base-url";
 import { router } from "@routers/index";
 import { useAuthStore } from "@stores/auth";
 import type { AxiosError } from "axios";
 import axios from "axios";
 
 export const http = axios.create({
-	baseURL: import.meta.env.VITE_API_URL,
+	baseURL: resolveApiBaseUrl(import.meta.env.VITE_API_URL),
 	withCredentials: true,
 });
 
@@ -25,7 +26,14 @@ http.interceptors.response.use(
 		// senão a guarda de rota ainda acha que o usuário está logado e devolve pra "/".
 		if (error.response?.status === 401) {
 			useAuthStore().clearSession();
-			router.push({ path: "/login", query: { redirect: router.currentRoute.value.fullPath } });
+			const current = router.currentRoute.value;
+			// Várias chamadas em paralelo podem devolver 401 ao mesmo tempo (ex.: sessão expirada
+			// com a página disparando várias buscas no mount). Sem essa guarda, cada uma empurra um
+			// novo /login?redirect=... usando o fullPath atual — que já pode ser o /login da chamada
+			// anterior — aninhando o redirect indefinidamente.
+			if (current.path !== "/login") {
+				router.push({ path: "/login", query: { redirect: current.fullPath } });
+			}
 		}
 		return Promise.reject(error);
 	},

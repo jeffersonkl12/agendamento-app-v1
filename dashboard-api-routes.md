@@ -104,9 +104,10 @@ O bot só consegue agendar quando **todas** as peças abaixo existem (RN-C02, RN
 ```
 1. Cadastro + verificação de e-mail + login
 2. Perfil do negócio          POST /business-profiles
-3. Modelo de atendimento      POST /service-templates
-4. Perguntas do modelo (≥ 1)  POST /service-templates/:templateId/questions
-5. Configuração de agenda     POST /scheduling-configs   (com activeTemplateId do passo 3)
+3. Conectar WhatsApp          POST /business-profiles/me/whatsapp/connect  (ver §4)
+4. Modelo de atendimento      POST /service-templates
+5. Perguntas do modelo (≥ 1)  POST /service-templates/:templateId/questions
+6. Configuração de agenda     POST /scheduling-configs   (com activeTemplateId do passo 4)
 ```
 
 **Checklist de "bot pronto"** (o painel pode exibir como status):
@@ -114,6 +115,7 @@ O bot só consegue agendar quando **todas** as peças abaixo existem (RN-C02, RN
 | Condição                                              | Como verificar                                            |
 | ----------------------------------------------------- | --------------------------------------------------------- |
 | Perfil do negócio existe                              | `GET /business-profiles/me` → `200`                       |
+| WhatsApp conectado                                    | `GET /business-profiles/me` → `whatsappInstanceName` não é `null` |
 | Configuração de agenda existe                         | `GET /scheduling-configs/me` → `200`                      |
 | Há um modelo em uso                                   | `activeTemplateId` da configuração não é `null`           |
 | Modelo em uso tem ao menos uma pergunta               | `GET /service-templates/:activeTemplateId/questions` → lista não vazia |
@@ -165,6 +167,65 @@ Aceita apenas `businessName` e/ou `photoUrl` (RN-PF01). `businessName` vazio →
 - `whatsappInstanceName` é **somente leitura**: atribuído quando o número de WhatsApp é provisionado, nunca pelo painel. `null` = WhatsApp ainda não conectado.
 - Sem foto, o painel exibe as **iniciais** derivadas de `businessName`.
 - A API **não faz upload de imagem**: `photoUrl` deve ser uma URL já hospedada.
+
+### Conectar WhatsApp — `/business-profiles/me/whatsapp`
+
+Provisiona o número de WhatsApp do prestador via Evolution API. Exige que o perfil do negócio já exista (`POST /business-profiles` feito antes). Não há webhook: o painel **precisa fazer polling** do endpoint de status enquanto o QR code estiver na tela.
+
+#### `POST /business-profiles/me/whatsapp/connect` — gerar QR code (ou código de pareamento)
+
+Cria a instância (ou, se já existir uma pendente, busca um QR code atualizado para ela). Chamar de novo enquanto o QR não foi escaneado é seguro (idempotente) — útil para o botão "gerar novo QR code" se o anterior expirar.
+
+Corpo **opcional**:
+
+```json
+{ "phoneNumber": "+55 11 99999-9999" }
+```
+
+| Campo         | Tipo             | Regra                                                            |
+| ------------- | ---------------- | ----------------------------------------------------------------- |
+| `phoneNumber` | string \| omitido | Opcional. Aceita qualquer formatação; o servidor extrai só os dígitos (DDI + DDD + número, 10–15 dígitos). |
+
+→ `200`:
+
+```json
+{
+  "qrCodeBase64": "data:image/png;base64,...",
+  "pairingCode": "JZ31JX5J",
+  "connectionState": "connecting",
+  "isConnected": false
+}
+```
+
+- Sem `phoneNumber` no corpo: só vem `qrCodeBase64` (fluxo de escanear com outro celular).
+- Com `phoneNumber`: além do QR, vem `pairingCode` — um código de 8 caracteres para o dono digitar direto no próprio celular, em **WhatsApp → Aparelhos conectados → Conectar com número de telefone → Vincular com número de telefone**, sem precisar de câmera nem de um segundo aparelho.
+- ⚠️ **O `pairingCode` só é gerado no momento em que a instância é criada.** Se o painel já chamou `connect` antes **sem** `phoneNumber`, uma chamada seguinte **com** `phoneNumber` não vai mais trazer `pairingCode` (a Evolution API retorna `null`) — é preciso `DELETE .../whatsapp` primeiro e então chamar `connect` de novo já com o número, para que a instância nasça no modo de pareamento por código.
+- Recomendação de UI: pedir o telefone **antes** da primeira chamada a `connect` (ex.: campo opcional "Prefere digitar um código em vez de escanear? Informe seu número"), em vez de deixar para depois.
+
+| Status | Quando                                                                 |
+| ------ | ----------------------------------------------------------------------- |
+| `400`  | `phoneNumber` enviado com menos de 10 ou mais de 15 dígitos              |
+| `404`  | Perfil do negócio ainda não existe                                       |
+| `409`  | WhatsApp já está conectado (`GET /business-profiles/me` já traz `whatsappInstanceName` preenchido) |
+| `500`  | Evolution API fora do ar ou ainda não gerou o QR code — tentar de novo em alguns segundos |
+
+#### `GET /business-profiles/me/whatsapp/status` — checar conexão
+
+Chame a cada poucos segundos (ex.: a cada 3s) enquanto o QR estiver visível. Quando `isConnected` vira `true`, feche o modal do QR — nesse momento `GET /business-profiles/me` já retorna `whatsappInstanceName` preenchido.
+
+→ `200`:
+
+```json
+{ "connectionState": "connecting", "isConnected": false }
+```
+
+`connectionState` é um de `"connecting"`, `"open"`, `"close"`. `404` se o perfil não existe.
+
+#### `DELETE /business-profiles/me/whatsapp` — desconectar
+
+Remove a instância na Evolution API e limpa `whatsappInstanceName` (volta a `null`). Depois disso é possível chamar `connect` de novo para gerar um QR novo.
+
+→ `204` sem corpo · `409` se não havia WhatsApp conectado · `404` se o perfil não existe.
 
 ---
 
@@ -558,6 +619,7 @@ Igual ao item da lista, mais `answers`:
 | ---------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | **Login / Cadastro**         | `GET /api/auth/get-session`                                                                        | Endpoints do Better Auth (§2)                                                                 |
 | **Onboarding**               | `GET /business-profiles/me`, `GET /scheduling-configs/me`, `GET /service-templates`                | `POST` na ordem do §3                                                                         |
+| **Conectar WhatsApp**        | `GET /business-profiles/me` (checa `whatsappInstanceName`)                                          | `POST /business-profiles/me/whatsapp/connect` (mostra QR); polling em `GET .../whatsapp/status`; `DELETE .../whatsapp` para desconectar |
 | **Início (resumo)**          | `GET /appointments`, `GET /customers`, `GET /scheduling-configs/me` (fuso)                         | —                                                                                             |
 | **Agenda (calendário/lista)**| `GET /appointments`, `GET /customers`, `GET /scheduling-configs/me`                                 | Abrir detalhe                                                                                 |
 | **Detalhe do agendamento**   | `GET /appointments/:id` (+ cliente do mapa)                                                         | `POST /appointments/:id/cancel`                                                               |
@@ -593,7 +655,7 @@ Comportamentos do backend hoje que o front precisa contornar ou que ainda devem 
 
 | # | Situação                                                                                                          | Impacto no front / recomendação                                                            |
 | - | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| 1 | **CORS e `trustedOrigins` não estão configurados.** Um painel em outra origem (ex.: `localhost:5173`) terá requisições e login bloqueados. | Configurar no backend antes da integração, ou servir o front pela mesma origem (proxy do dev server). |
+| ~~1~~ | ~~CORS e `trustedOrigins` não estavam configurados.~~ **Resolvido**: `localhost:5173` (http e https) já está liberado via `CORS_ALLOWED_ORIGINS`. | Nenhuma ação necessária. Domínio de produção deve ser adicionado à mesma variável quando existir. |
 | 2 | `POST` duplicado em perfil, assinatura ou configuração de agenda retorna `500` em vez de `409`.                    | Sempre `GET /me` antes; nunca fazer `POST` se já existe.                                    |
 | 3 | Excluir modelo em uso ou já usado em agendamentos retorna `500` em vez de `409`.                                  | Bloquear na UI e tratar o erro com mensagem amigável.                                       |
 | 4 | `activeTemplateId` não é validado ao salvar (pode apontar para modelo inexistente, de outro prestador ou sem perguntas). | Só permitir escolha a partir de `GET /service-templates` e validar perguntas no front.     |
@@ -604,3 +666,4 @@ Comportamentos do backend hoje que o front precisa contornar ou que ainda devem 
 | 9 | Cancelamento pelo prestador ainda **não notifica** o cliente no WhatsApp (RN-A02).                                 | Avisar o prestador na confirmação de cancelamento enquanto não houver notificação.          |
 | 10| `POST /appointments` confia no `totalValue` enviado e não valida o horário (viola RN-A04/RN-API03).                | Não usar no painel.                                                                         |
 | 11| Mensagens de erro vêm em inglês.                                                                                  | Mapear por status/campo para textos em PT-BR.                                               |
+| 12| Conexão do WhatsApp (§4) não tem webhook: a confirmação depende do painel fazer polling em `GET /business-profiles/me/whatsapp/status`. Logo após criar a instância, a Evolution API pode levar alguns segundos para gerar o QR code (`connect` retorna `500` nesse intervalo). | Fazer o painel tentar `connect` de novo automaticamente (com backoff curto) se der `500`, antes de mostrar erro ao usuário. |

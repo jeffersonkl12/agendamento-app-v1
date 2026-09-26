@@ -21,6 +21,9 @@ export function useOnboardingStatus() {
 	const isLoaded = ref(false);
 
 	const hasBusinessProfile = computed(() => businessProfileStore.profile !== null);
+	const hasWhatsappConnected = computed(
+		() => businessProfileStore.profile?.whatsappInstanceName != null,
+	);
 	const hasSchedulingConfig = computed(() => schedulingConfigStore.config !== null);
 
 	const activeTemplateId = computed(() => schedulingConfigStore.config?.activeTemplateId ?? null);
@@ -36,6 +39,7 @@ export function useOnboardingStatus() {
 	const isBotReady = computed(
 		() =>
 			hasBusinessProfile.value &&
+			hasWhatsappConnected.value &&
 			hasSchedulingConfig.value &&
 			hasActiveTemplate.value &&
 			activeTemplateHasQuestions.value,
@@ -46,6 +50,9 @@ export function useOnboardingStatus() {
 		const items: OnboardingPendingItem[] = [];
 		if (!hasBusinessProfile.value) {
 			items.push({ id: "profile", label: "Cadastre o nome do seu negócio", to: "/perfil" });
+		}
+		if (!hasWhatsappConnected.value) {
+			items.push({ id: "whatsapp", label: "Conecte o WhatsApp do seu negócio", to: "/perfil" });
 		}
 		if (!hasSchedulingConfig.value) {
 			items.push({
@@ -83,6 +90,7 @@ export function useOnboardingStatus() {
 
 	return {
 		hasBusinessProfile,
+		hasWhatsappConnected,
 		hasSchedulingConfig,
 		hasActiveTemplate,
 		activeTemplateHasQuestions,

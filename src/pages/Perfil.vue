@@ -6,6 +6,7 @@ import { Button } from '@components/ui/button'
 import { useAuth } from '@composables/useAuth'
 import Plan from '@views/perfil/Plan.vue'
 import ProfileHeader from '@views/perfil/ProfileHeader.vue'
+import WhatsappConnection from '@views/perfil/WhatsappConnection.vue'
 
 const logoutOpen = ref(false)
 
@@ -24,6 +25,7 @@ async function confirmLogout() {
   </h1>
 
   <ProfileHeader />
+  <WhatsappConnection />
   <Plan />
 
   <Button
