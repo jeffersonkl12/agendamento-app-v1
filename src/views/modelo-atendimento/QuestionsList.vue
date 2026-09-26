@@ -3,7 +3,7 @@ import type { QuestionDraft, QuestionListItem, QuestionType } from '@composables
 import { PhTrash } from '@phosphor-icons/vue'
 import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { AddQuestionSheet } from '@components/modelo-atendimento/add-question-sheet'
+import { QuestionFormSheet } from '@components/modelo-atendimento/question-form-sheet'
 import { ConfirmDialog } from '@components/shared/confirm-dialog'
 import { Button } from '@components/ui/button'
 import { Skeleton } from '@components/ui/skeleton'
@@ -22,6 +22,8 @@ const {
   isLastQuestionOfActiveTemplate,
   isQuestionsBusy,
   addQuestion,
+  questionDraft,
+  editQuestion,
   removeQuestion,
 } = useServiceTemplateEditor()
 
@@ -31,7 +33,9 @@ function questionMeta(question: QuestionListItem): string {
 
 const questionToDelete = ref<QuestionListItem | null>(null)
 const deleteConfirmOpen = ref(false)
-const addQuestionOpen = ref(false)
+const questionSheetOpen = ref(false)
+const questionToEdit = ref<QuestionListItem | null>(null)
+const editingDraft = computed(() => questionToEdit.value ? questionDraft(questionToEdit.value.id) ?? undefined : undefined)
 
 // RN-C03: se for a última pergunta do modelo em uso, o bot para de agendar — o aviso muda.
 const deleteDescription = computed(() => isLastQuestionOfActiveTemplate.value
@@ -55,13 +59,26 @@ async function confirmDelete() {
     toast.error(result.message)
 }
 
+function requestEdit(question: QuestionListItem) {
+  questionToEdit.value = question
+  questionSheetOpen.value = true
+}
+
+function requestAdd() {
+  questionToEdit.value = null
+  questionSheetOpen.value = true
+}
+
 async function submitQuestion(draft: QuestionDraft) {
-  const result = await addQuestion(draft)
+  const result = questionToEdit.value
+    ? await editQuestion(questionToEdit.value.id, draft)
+    : await addQuestion(draft)
   if (!result.success) {
     toast.error(result.message)
     return
   }
-  addQuestionOpen.value = false
+  questionSheetOpen.value = false
+  questionToEdit.value = null
   toast.success(result.message)
 }
 </script>
@@ -78,21 +95,28 @@ async function submitQuestion(draft: QuestionDraft) {
         :key="question.id"
         class="flex items-center gap-3 rounded-2xl bg-card p-3.5"
       >
-        <span
-          aria-hidden="true"
-          class="flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-item-title text-primary"
+        <button
+          type="button"
+          :aria-label="`Editar pergunta: ${question.title}`"
+          class="flex min-w-0 flex-1 items-center gap-3 text-left"
+          @click="requestEdit(question)"
         >
-          {{ QUESTION_TYPE_DISPLAY[question.type].icon }}
-        </span>
+          <span
+            aria-hidden="true"
+            class="flex size-8.5 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-item-title text-primary"
+          >
+            {{ QUESTION_TYPE_DISPLAY[question.type].icon }}
+          </span>
 
-        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-          <h3 class="text-foreground text-item-title">
-            {{ question.title }}
-          </h3>
-          <p class="text-label text-muted-foreground">
-            {{ questionMeta(question) }}
-          </p>
-        </div>
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h3 class="text-foreground text-item-title">
+              {{ question.title }}
+            </h3>
+            <p class="text-label text-muted-foreground">
+              {{ questionMeta(question) }}
+            </p>
+          </div>
+        </button>
 
         <button
           type="button"
@@ -117,7 +141,7 @@ async function submitQuestion(draft: QuestionDraft) {
       type="button"
       variant="outline"
       class="h-11.5 w-full rounded-xl border-border-strong bg-transparent text-item-title text-primary"
-      @click="addQuestionOpen = true"
+      @click="requestAdd"
     >
       + Adicionar pergunta
     </Button>
@@ -131,8 +155,9 @@ async function submitQuestion(draft: QuestionDraft) {
       @confirm="confirmDelete"
     />
 
-    <AddQuestionSheet
-      v-model:open="addQuestionOpen"
+    <QuestionFormSheet
+      v-model:open="questionSheetOpen"
+      :initial-values="editingDraft"
       :is-submitting="isQuestionsBusy"
       @submit="submitQuestion"
     />

@@ -32,12 +32,24 @@ const CHOICE_TYPES: QuestionType[] = ['SINGLE', 'MULTI']
 const props = defineProps<{
   open: boolean
   isSubmitting?: boolean
+  /** Presente = editando uma pergunta existente; ausente = criando uma nova. */
+  initialValues?: QuestionDraft
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
   'submit': [draft: QuestionDraft]
 }>()
+
+const DEFAULT_VALUES: QuestionDraft = {
+  title: '',
+  required: true,
+  type: 'TEXT',
+  options: [{ label: '', price: '' }, { label: '', price: '' }],
+  unitPrice: '',
+  yesPrice: '',
+  noPrice: '',
+}
 
 const schema = toTypedSchema(z.object({
   title: z.string().trim().min(1, 'Informe a pergunta'),
@@ -55,15 +67,7 @@ const schema = toTypedSchema(z.object({
 
 const { handleSubmit, values, resetForm, errors } = useForm({
   validationSchema: schema,
-  initialValues: {
-    title: '',
-    required: true,
-    type: 'TEXT' as QuestionType,
-    options: [{ label: '', price: '' }, { label: '', price: '' }],
-    unitPrice: '',
-    yesPrice: '',
-    noPrice: '',
-  },
+  initialValues: props.initialValues ?? DEFAULT_VALUES,
 })
 
 const { fields: optionFields, push: pushOption, remove: removeOption } = useFieldArray<{ label: string, price: string }>('options')
@@ -78,22 +82,22 @@ function cancel() {
   emit('update:open', false)
 }
 
+// Reabrir troca o draft (nova pergunta vs. edição de outra) — reseta com os valores certos a cada abertura.
 watch(() => props.open, (open) => {
-  if (!open)
-    resetForm()
+  resetForm({ values: open ? (props.initialValues ?? DEFAULT_VALUES) : DEFAULT_VALUES })
 })
 </script>
 
 <template>
   <Drawer :open="props.open" @update:open="emit('update:open', $event)">
     <DrawerContent
-      data-slot="add-question-sheet"
+      data-slot="question-form-sheet"
       overlay-class="bg-foreground/45 backdrop-blur-none"
       class="gap-3.5 overflow-y-auto px-5 pt-5 pb-7 data-[swipe-direction=down]:rounded-t-3xl"
     >
       <form class="flex flex-col gap-3.5" @submit="onSubmit">
         <h2 class="text-foreground text-subheading">
-          Nova pergunta
+          {{ props.initialValues ? 'Editar pergunta' : 'Nova pergunta' }}
         </h2>
 
         <FormField v-slot="{ componentField }" name="title">
@@ -293,7 +297,7 @@ watch(() => props.open, (open) => {
             :disabled="props.isSubmitting"
             class="flex-1 rounded-xl bg-primary p-3.5 text-item-title text-primary-foreground disabled:opacity-60"
           >
-            {{ props.isSubmitting ? 'Salvando...' : 'Salvar pergunta' }}
+            {{ props.isSubmitting ? 'Salvando...' : (props.initialValues ? 'Salvar alterações' : 'Salvar pergunta') }}
           </button>
         </div>
       </form>

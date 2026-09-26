@@ -3,6 +3,8 @@ import { centsToReais, reaisToCents } from "@libs/format";
 import type {
 	CreateServiceTemplateQuestionInput,
 	QuestionType,
+	ServiceTemplateQuestion,
+	UpdateServiceTemplateQuestionInput,
 } from "@services/service-template-question";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
 import { useServiceTemplateStore } from "@stores/service-template";
@@ -49,15 +51,13 @@ function optionalCents(value: string): number | undefined {
 }
 
 /**
- * Monta o corpo do POST de pergunta (§7.2) mandando só os campos que o tipo usa — o servidor
- * normaliza de qualquer jeito (§7.3), mas o payload fica honesto. Opções sem rótulo são descartadas
- * aqui também (RN-P03), assim a validação RN-P02 é feita antes da chamada.
+ * Monta o corpo comum a criação (§7.2) e edição (§7.4) mandando só os campos que o tipo usa — o
+ * servidor normaliza de qualquer jeito (§7.3), mas o payload fica honesto. Opções sem rótulo são
+ * descartadas aqui também (RN-P03), assim a validação RN-P02 é feita antes da chamada. Na edição,
+ * options/booleanPrices sempre vão inteiros (RN-P06: não existe edição parcial de opção).
  */
-function toCreateQuestionInput(
-	draft: QuestionDraft,
-	order: number,
-): CreateServiceTemplateQuestionInput {
-	const base = { title: draft.title.trim(), type: draft.type, required: draft.required, order };
+function toQuestionPayload(draft: QuestionDraft): Omit<CreateServiceTemplateQuestionInput, "order"> {
+	const base = { title: draft.title.trim(), type: draft.type, required: draft.required };
 
 	if (CHOICE_TYPES.includes(draft.type)) {
 		const options = draft.options
@@ -75,6 +75,33 @@ function toCreateQuestionInput(
 		};
 	}
 	return base;
+}
+
+/** Converte a pergunta salva (com preços em centavos) no draft do formulário (preços em reais). */
+function toQuestionDraft(question: ServiceTemplateQuestion): QuestionDraft {
+	const priceFor = (label: string): string => {
+		const option = question.options.find((candidate) => candidate.label === label);
+		return option?.price != null ? String(centsToReais(option.price)) : "";
+	};
+	const hasOptions = CHOICE_TYPES.includes(question.type) && question.options.length > 0;
+
+	return {
+		title: question.title,
+		required: question.required,
+		type: question.type,
+		options: hasOptions
+			? question.options.map((option) => ({
+					label: option.label,
+					price: option.price != null ? String(centsToReais(option.price)) : "",
+				}))
+			: [
+					{ label: "", price: "" },
+					{ label: "", price: "" },
+				],
+		unitPrice: question.unitPrice != null ? String(centsToReais(question.unitPrice)) : "",
+		yesPrice: question.type === "BOOLEAN" ? priceFor("Sim") : "",
+		noPrice: question.type === "BOOLEAN" ? priceFor("Não") : "",
+	};
 }
 
 function validateDraft(draft: QuestionDraft): string | null {
@@ -167,12 +194,31 @@ export function useServiceTemplateEditor() {
 		// §7.5: o servidor não reindexa — a nova pergunta entra depois da última (1, 2, 3...).
 		const existing = questionStore.questionsByTemplateId[template.value.id] ?? [];
 		const nextOrder = existing.reduce((max, question) => Math.max(max, question.order), 0) + 1;
-		const input = toCreateQuestionInput(draft, nextOrder);
+		const input: CreateServiceTemplateQuestionInput = { ...toQuestionPayload(draft), order: nextOrder };
 
 		const result = await questionStore.createQuestion(template.value.id, input);
 		if (!result)
 			return { success: false, message: questionStore.error ?? "Não foi possível salvar." };
 		return { success: true, message: "Pergunta adicionada." };
+	}
+
+	function questionDraft(questionId: string): QuestionDraft | null {
+		if (!template.value) return null;
+		const list = questionStore.questionsByTemplateId[template.value.id] ?? [];
+		const question = list.find((candidate) => candidate.id === questionId);
+		return question ? toQuestionDraft(question) : null;
+	}
+
+	async function editQuestion(questionId: string, draft: QuestionDraft): Promise<EditorActionResult> {
+		if (!template.value) return { success: false, message: "Modelo não encontrado." };
+		const validationError = validateDraft(draft);
+		if (validationError) return { success: false, message: validationError };
+
+		const input: UpdateServiceTemplateQuestionInput = toQuestionPayload(draft);
+		const result = await questionStore.updateQuestion(template.value.id, questionId, input);
+		if (!result)
+			return { success: false, message: questionStore.error ?? "Não foi possível salvar." };
+		return { success: true, message: "Pergunta atualizada." };
 	}
 
 	async function removeQuestion(questionId: string): Promise<EditorActionResult> {
@@ -209,6 +255,8 @@ export function useServiceTemplateEditor() {
 		rename,
 		updateBasePrice,
 		addQuestion,
+		questionDraft,
+		editQuestion,
 		removeQuestion,
 		removeTemplate,
 		createTemplate: templates.createTemplate,
