@@ -1,14 +1,15 @@
+import { useAppointmentTemplateStore } from "@stores/appointment-template";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
-import { useServiceTemplateStore } from "@stores/service-template";
-import { useServiceTemplateQuestionStore } from "@stores/service-template-question";
+import { useTemplateQuestionStore } from "@stores/template-question";
 import { computed } from "vue";
 
 export interface ServiceTemplateOption {
 	id: string;
 	name: string;
-	/** `null` enquanto as perguntas do modelo não foram carregadas. */
+	/** `null` enquanto as perguntas do serviço não foram carregadas. */
 	questionCount: number | null;
-	isInUse: boolean;
+	/** Sem agenda configurada o assistente não tem horários pra oferecer (back-api.md §7.1). */
+	hasSchedule: boolean;
 }
 
 export interface TemplateActionResult {
@@ -20,16 +21,13 @@ export interface TemplateActionResult {
 const DEFAULT_TEMPLATE_NAME = "Novo modelo";
 
 /**
- * Modelos de atendimento do prestador (dashboard-api-routes.md §6): vários modelos, só um em uso
- * (`activeTemplateId` da configuração). Excluir é bloqueado pro modelo em uso, e a API devolve 500
- * pra modelo já usado em agendamentos (§12#3) — mapeado aqui pra uma mensagem compreensível.
+ * Serviços do profissional (back-api.md §5.3): vários, cada um com a própria agenda e o próprio
+ * questionário. Excluir remove em cascata agenda, perguntas e opções; agendamentos antigos ficam.
  */
 export function useServiceTemplates() {
-	const templateStore = useServiceTemplateStore();
-	const questionStore = useServiceTemplateQuestionStore();
+	const templateStore = useAppointmentTemplateStore();
+	const questionStore = useTemplateQuestionStore();
 	const configStore = useSchedulingConfigStore();
-
-	const activeTemplateId = computed(() => configStore.config?.activeTemplateId ?? null);
 
 	function questionCountOf(templateId: string): number | null {
 		return questionStore.questionsByTemplateId[templateId]?.length ?? null;
@@ -40,18 +38,14 @@ export function useServiceTemplates() {
 			id: template.id,
 			name: template.name,
 			questionCount: questionCountOf(template.id),
-			isInUse: template.id === activeTemplateId.value,
+			hasSchedule: configStore.configByTemplateId.has(template.id),
 		})),
 	);
 
-	function isInUse(templateId: string): boolean {
-		return templateId === activeTemplateId.value;
-	}
-
-	// GET /service-templates não traz perguntas (§6); a contagem vem de uma chamada por modelo.
-	// O volume de modelos por prestador é pequeno, então o custo é aceitável.
+	// GET /appointment-templates não traz perguntas; a contagem vem de uma chamada por serviço.
+	// O volume de serviços por profissional é pequeno, então o custo é aceitável.
 	async function load() {
-		await Promise.all([templateStore.ensureTemplates(), configStore.ensureMyConfig()]);
+		await Promise.all([templateStore.ensureTemplates(), configStore.ensureConfigs()]);
 		await Promise.all(
 			templateStore.templates
 				.filter((template) => questionCountOf(template.id) === null)
@@ -71,30 +65,23 @@ export function useServiceTemplates() {
 	}
 
 	async function removeTemplate(templateId: string): Promise<TemplateActionResult> {
-		if (isInUse(templateId)) {
-			return {
-				success: false,
-				message:
-					"Este modelo está em uso. Escolha outro em Configurar agendamentos antes de excluir.",
-			};
-		}
 		const removed = await templateStore.removeTemplate(templateId);
-		if (removed) return { success: true, message: "Modelo excluído." };
-		if (templateStore.errorStatus === 500 || templateStore.errorStatus === 409) {
+		if (!removed) {
 			return {
 				success: false,
-				message: "Este modelo já foi usado em agendamentos e não pode ser excluído.",
+				message: templateStore.error ?? "Não foi possível excluir o modelo.",
 			};
 		}
-		return { success: false, message: templateStore.error ?? "Não foi possível excluir o modelo." };
+		// A agenda e as perguntas caíram em cascata no back; o cache local acompanha.
+		await configStore.fetchConfigs();
+		delete questionStore.questionsByTemplateId[templateId];
+		return { success: true, message: "Modelo excluído." };
 	}
 
 	return {
 		options,
-		activeTemplateId,
 		hasLoaded: computed(() => templateStore.hasLoaded),
 		isLoading: computed(() => templateStore.isLoading),
-		isInUse,
 		questionCountOf,
 		load,
 		createTemplate,

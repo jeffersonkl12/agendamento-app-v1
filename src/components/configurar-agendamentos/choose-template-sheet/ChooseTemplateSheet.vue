@@ -6,7 +6,7 @@ interface TemplateOption {
   id: string
   name: string
   questionCount: number | null
-  isInUse: boolean
+  hasSchedule: boolean
 }
 
 const props = defineProps<{
@@ -26,7 +26,7 @@ function describe(option: TemplateOption): string {
   const count = option.questionCount === null
     ? 'carregando perguntas'
     : `${option.questionCount} ${option.questionCount === 1 ? 'pergunta' : 'perguntas'}`
-  return option.isInUse ? `${count} · em uso` : count
+  return option.hasSchedule ? count : `${count} · sem agenda`
 }
 </script>
 
@@ -38,10 +38,10 @@ function describe(option: TemplateOption): string {
       class="gap-4 px-5 pt-5 pb-7 data-[swipe-direction=down]:rounded-t-3xl"
     >
       <h2 id="choose-template-title" class="text-foreground text-subheading">
-        Modelos disponíveis
+        Serviços disponíveis
       </h2>
       <p class="text-label-lg text-muted-foreground">
-        Escolha o modelo usado nesses agendamentos
+        Escolha o serviço cuja agenda você quer configurar
       </p>
 
       <ul v-if="props.options.length" role="radiogroup" aria-labelledby="choose-template-title" class="flex flex-col gap-2">
@@ -76,7 +76,7 @@ function describe(option: TemplateOption): string {
           <RouterLink
             :to="`/modelo-atendimento/${option.id}`"
             class="shrink-0 text-primary text-tag"
-            :aria-label="`Abrir modelo ${option.name}`"
+            :aria-label="`Abrir serviço ${option.name}`"
             @click="emit('update:open', false)"
           >
             Abrir
@@ -85,7 +85,7 @@ function describe(option: TemplateOption): string {
       </ul>
 
       <p v-else class="text-muted-foreground text-paragraph">
-        Você ainda não tem modelos. Crie o primeiro para o bot saber o que perguntar.
+        Você ainda não tem serviços. Crie o primeiro para configurar a agenda.
       </p>
 
       <button
@@ -94,7 +94,7 @@ function describe(option: TemplateOption): string {
         class="w-fit text-primary text-tag disabled:opacity-60"
         @click="emit('create')"
       >
-        + Novo modelo
+        + Novo serviço
       </button>
 
       <DrawerClose class="flex items-center justify-center rounded-xl bg-surface p-3.25 text-foreground text-item-title">

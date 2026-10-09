@@ -10,16 +10,15 @@ import { Skeleton } from '@components/ui/skeleton'
 import { useServiceTemplateEditor } from '@composables/useServiceTemplateEditor'
 
 const QUESTION_TYPE_DISPLAY: Record<QuestionType, { icon: string, label: string }> = {
-  SINGLE: { icon: '◉', label: 'Escolha única' },
-  MULTI: { icon: '☰', label: 'Múltipla escolha' },
-  BOOLEAN: { icon: '✓', label: 'Sim ou não' },
-  TEXT: { icon: 'Aa', label: 'Texto livre' },
-  NUMBER: { icon: '#', label: 'Número' },
+  single_choice: { icon: '◉', label: 'Escolha única' },
+  multiple_choice: { icon: '☰', label: 'Múltipla escolha' },
+  yes_no: { icon: '✓', label: 'Sim ou não' },
+  free_text: { icon: 'Aa', label: 'Texto livre' },
+  number: { icon: '#', label: 'Número' },
 }
 
 const {
   questions,
-  isLastQuestionOfActiveTemplate,
   isQuestionsBusy,
   addQuestion,
   questionDraft,
@@ -37,10 +36,8 @@ const questionSheetOpen = ref(false)
 const questionToEdit = ref<QuestionListItem | null>(null)
 const editingDraft = computed(() => questionToEdit.value ? questionDraft(questionToEdit.value.id) ?? undefined : undefined)
 
-// RN-C03: se for a última pergunta do modelo em uso, o bot para de agendar — o aviso muda.
-const deleteDescription = computed(() => isLastQuestionOfActiveTemplate.value
-  ? 'É a última pergunta do modelo em uso: sem perguntas, o bot para de aceitar agendamentos.'
-  : 'Ela deixará de aparecer no agendamento pelo WhatsApp. Agendamentos antigos não são afetados.')
+// Excluir também remove as opções da pergunta (cascata no back); agendamentos antigos guardam a resposta.
+const deleteDescription = 'Ela e as opções dela deixarão de aparecer no agendamento pelo WhatsApp. Agendamentos antigos não são afetados.'
 
 function requestDelete(question: QuestionListItem) {
   questionToDelete.value = question
@@ -134,7 +131,7 @@ async function submitQuestion(draft: QuestionDraft) {
     </div>
 
     <p v-else class="text-paragraph text-muted-foreground">
-      Nenhuma pergunta ainda. Um modelo sem perguntas não pode ser usado pelo bot.
+      Nenhuma pergunta ainda. O questionário é opcional.
     </p>
 
     <Button

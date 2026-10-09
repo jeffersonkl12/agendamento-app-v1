@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toTypedSchema } from '@vee-validate/zod'
-import { RouterLink } from 'vue-router'
+import { onMounted } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import * as z from 'zod'
 import { AuthHeader, AuthHeaderDescription, AuthHeaderTitle } from '@components/auth/auth-header'
@@ -18,6 +19,13 @@ const schema = toTypedSchema(z.object({
 }))
 
 const { signIn, signInWithGoogle, isLoading } = useAuth()
+const route = useRoute()
+
+// errorCallbackURL do login com Google (back-api.md §2.4) volta pra cá com ?error=oauth.
+onMounted(() => {
+  if (route.query.error === 'oauth')
+    toast.error('Não foi possível entrar com o Google. Tente novamente.')
+})
 
 async function onSubmit(values: Record<string, unknown>) {
   const result = await signIn({ email: String(values.email), password: String(values.password) })

@@ -9,9 +9,9 @@ import ServiceTemplate from '@views/configurar-agendamentos/ServiceTemplate.vue'
 useSchedulingConfigFormSync()
 
 const {
-  enabledDays,
+  openDays,
   hours,
-  activeTemplateId,
+  selectedTemplateId,
   hoursLabel,
   templateWarning,
   isSaving,
@@ -32,9 +32,9 @@ async function saveConfiguration() {
     Configurar agendamentos
   </h1>
 
-  <Availability v-model:enabled-days="enabledDays" />
+  <ServiceTemplate v-model:selected-template-id="selectedTemplateId" :warning="templateWarning" />
+  <Availability v-model:open-days="openDays" />
   <ScheduleHours v-model:hours="hours" :label="hoursLabel" />
-  <ServiceTemplate v-model:active-template-id="activeTemplateId" :warning="templateWarning" />
 
   <div class="flex flex-col gap-2">
     <Button
@@ -43,10 +43,10 @@ async function saveConfiguration() {
       class="text-button-strong h-12 w-full rounded-2xl"
       @click="saveConfiguration"
     >
-      {{ isSaving ? 'Salvando...' : 'Salvar configuração' }}
+      {{ isSaving ? 'Salvando...' : 'Salvar agenda' }}
     </Button>
     <p class="text-center text-caption text-muted-foreground">
-      Salvar publica na hora para o bot. Agendamentos já marcados não são alterados.
+      Salvar publica na hora para o assistente. Agendamentos já marcados não são alterados.
     </p>
   </div>
 </template>

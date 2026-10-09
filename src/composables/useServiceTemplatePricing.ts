@@ -1,22 +1,28 @@
-import type { ServiceTemplateQuestion } from "@services/service-template-question";
+import type { QuestionOption } from "@services/question-option";
+import type { TemplateQuestion } from "@services/template-question";
 import { computed, type Ref } from "vue";
 
 export type QuestionAnswerValue =
-	| { type: "SINGLE"; optionId: string }
-	| { type: "MULTI"; optionIds: string[] }
-	| { type: "NUMBER"; quantity: number }
-	| { type: "BOOLEAN"; value: "yes" | "no" }
-	| { type: "TEXT" };
+	| { type: "single_choice"; optionId: string }
+	| { type: "multiple_choice"; optionIds: string[] }
+	| { type: "number"; quantity: number }
+	| { type: "yes_no"; value: boolean }
+	| { type: "free_text"; text: string };
 
 export type QuestionAnswers = Record<string, QuestionAnswerValue>;
 
 /**
- * Simulador de preço do modelo (dashboard-api-routes.md §7.7): só ilustrativo no painel,
- * o valor real é sempre recalculado pelo servidor no momento do agendamento.
+ * Simulador de preço do serviço (back-api.md §5.5): só ilustrativo no painel, quem calcula o valor
+ * real na reserva é o assistente.
+ * - free_text: cobra uma vez, se respondida
+ * - number: preço × quantidade
+ * - yes_no: só se a resposta for "sim"
+ * - single_choice / multiple_choice: preço da(s) opção(ões) escolhida(s)
  */
 export function useServiceTemplatePricing(
-	basePrice: Ref<number>,
-	questions: Ref<ServiceTemplateQuestion[]>,
+	basePriceInCents: Ref<number>,
+	questions: Ref<TemplateQuestion[]>,
+	optionsByQuestionId: Ref<Record<string, QuestionOption[]>>,
 	answers: Ref<QuestionAnswers>,
 ) {
 	const questionsTotal = computed(() => {
@@ -26,33 +32,24 @@ export function useServiceTemplatePricing(
 			const answer = answers.value[question.id];
 			if (!answer) continue;
 
-			if (answer.type === "SINGLE") {
-				const option = question.options.find((opt) => opt.id === answer.optionId);
-				total += option?.price ?? 0;
-			}
+			const options = optionsByQuestionId.value[question.id] ?? [];
+			const optionPrice = (optionId: string) =>
+				options.find((option) => option.id === optionId)?.priceInCents ?? 0;
+			const price = question.priceInCents ?? 0;
 
-			if (answer.type === "MULTI") {
-				for (const optionId of answer.optionIds) {
-					const option = question.options.find((opt) => opt.id === optionId);
-					total += option?.price ?? 0;
-				}
+			if (answer.type === "single_choice") total += optionPrice(answer.optionId);
+			if (answer.type === "multiple_choice") {
+				for (const optionId of answer.optionIds) total += optionPrice(optionId);
 			}
-
-			if (answer.type === "BOOLEAN") {
-				const label = answer.value === "yes" ? "Sim" : "Não";
-				const option = question.options.find((opt) => opt.label === label);
-				total += option?.price ?? 0;
-			}
-
-			if (answer.type === "NUMBER" && question.unitPrice) {
-				total += answer.quantity * question.unitPrice;
-			}
+			if (answer.type === "number") total += answer.quantity * price;
+			if (answer.type === "yes_no" && answer.value) total += price;
+			if (answer.type === "free_text" && answer.text.trim()) total += price;
 		}
 
 		return total;
 	});
 
-	const total = computed(() => basePrice.value + questionsTotal.value);
+	const total = computed(() => basePriceInCents.value + questionsTotal.value);
 
 	return { questionsTotal, total };
 }

@@ -1,7 +1,8 @@
-import { useBusinessProfileStore } from "@stores/business-profile";
+import { isValidPhone, onlyDigits } from "@libs/format";
+import { useUserStore } from "@stores/user";
 import { computed } from "vue";
 
-const BUSINESS_NAME_MAX_LENGTH = 255;
+const TRADE_NAME_MAX_LENGTH = 120;
 
 export interface BusinessProfileSaveResult {
 	success: boolean;
@@ -17,44 +18,59 @@ function deriveInitials(name: string): string {
 }
 
 /**
- * Perfil do negócio (dashboard-api-routes.md §4): 1:1 com o prestador. Salvar faz POST se o perfil
- * ainda não existe e PATCH se já existe — POST duplicado devolve 500 (§1.3, §12#2).
+ * Perfil do profissional (back-api.md §5.1): o "negócio" é o próprio usuário — `tradeName` é o nome
+ * do negócio e `phone` o telefone. A foto (`image`) só é exibida: a API não a altera em PATCH /users/me.
  */
 export function useBusinessProfile() {
-	const store = useBusinessProfileStore();
+	const store = useUserStore();
 
-	const hasProfile = computed(() => store.profile !== null);
-	const businessName = computed(() => store.profile?.businessName ?? null);
-	const photoUrl = computed(() => store.profile?.photoUrl ?? null);
-	// §4: sem foto, o painel exibe as iniciais derivadas de businessName.
-	const initials = computed(() => deriveInitials(businessName.value ?? ""));
+	const businessName = computed(() => store.profile?.tradeName ?? null);
+	const phone = computed(() => store.profile?.phone ?? null);
+	const photoUrl = computed(() => store.profile?.image ?? null);
+	// Sem foto, o painel exibe as iniciais do nome do negócio (ou do nome da conta enquanto não há).
+	const initials = computed(() => deriveInitials(businessName.value ?? store.profile?.name ?? ""));
 
 	async function load() {
-		await store.ensureMyProfile();
+		await store.ensureMe();
+	}
+
+	async function save(
+		input: { tradeName: string } | { phone: string },
+		successMessage: string,
+	): Promise<BusinessProfileSaveResult> {
+		const result = await store.updateProfile(input);
+		if (!result) return { success: false, message: store.error ?? "Não foi possível salvar." };
+		return { success: true, message: successMessage };
 	}
 
 	async function saveBusinessName(name: string): Promise<BusinessProfileSaveResult> {
-		const businessName = name.trim();
-		if (!businessName) return { success: false, message: "Informe o nome do seu negócio." };
-		if (businessName.length > BUSINESS_NAME_MAX_LENGTH) {
-			return { success: false, message: "O nome pode ter no máximo 255 caracteres." };
+		const tradeName = name.trim();
+		if (!tradeName) return { success: false, message: "Informe o nome do seu negócio." };
+		if (tradeName.length > TRADE_NAME_MAX_LENGTH) {
+			return { success: false, message: "O nome pode ter no máximo 120 caracteres." };
 		}
+		return save({ tradeName }, "Nome do negócio salvo.");
+	}
 
-		const result = store.profile
-			? await store.updateProfile({ businessName })
-			: await store.createProfile({ businessName });
-
-		if (!result) return { success: false, message: store.error ?? "Não foi possível salvar." };
-		return { success: true, message: "Nome do negócio salvo." };
+	async function savePhone(value: string): Promise<BusinessProfileSaveResult> {
+		const digits = onlyDigits(value);
+		if (!isValidPhone(digits)) {
+			return {
+				success: false,
+				message: "Informe o telefone com DDI e DDD, só números (ex.: 5511999998888).",
+			};
+		}
+		return save({ phone: digits }, "Telefone salvo.");
 	}
 
 	return {
-		hasProfile,
 		businessName,
+		phone,
 		photoUrl,
 		initials,
 		isSaving: computed(() => store.isLoading),
 		load,
 		saveBusinessName,
+		savePhone,
 	};
 }

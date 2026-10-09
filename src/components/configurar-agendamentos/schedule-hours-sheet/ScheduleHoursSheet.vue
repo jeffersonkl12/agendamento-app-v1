@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface ScheduleHoursValue {
   startTime: string
   endTime: string
-  intervalMinutes: number
+  /** `null` = qualquer horário livre dentro do expediente. */
+  intervalMinutes: number | null
 }
 
 const props = defineProps<{
@@ -22,9 +23,14 @@ const emit = defineEmits<{
   'save': [value: ScheduleHoursValue]
 }>()
 
+// Intervalo nulo (qualquer horário) não casa com nenhuma opção do controle: fica sem seleção.
+function formatInterval(minutes: number | null): string {
+  return minutes === null ? '' : String(minutes)
+}
+
 const startTime = ref(props.hours.startTime)
 const endTime = ref(props.hours.endTime)
-const intervalMinutes = ref(String(props.hours.intervalMinutes))
+const intervalMinutes = ref(formatInterval(props.hours.intervalMinutes))
 
 const segmentedIntervalOptions = computed(() =>
   props.intervalOptions.map(minutes => ({ value: String(minutes), label: `${minutes} min` })),
@@ -36,14 +42,14 @@ watch(() => props.open, (open) => {
     return
   startTime.value = props.hours.startTime
   endTime.value = props.hours.endTime
-  intervalMinutes.value = String(props.hours.intervalMinutes)
+  intervalMinutes.value = formatInterval(props.hours.intervalMinutes)
 })
 
 function save() {
   emit('save', {
     startTime: startTime.value,
     endTime: endTime.value,
-    intervalMinutes: Number(intervalMinutes.value),
+    intervalMinutes: intervalMinutes.value ? Number(intervalMinutes.value) : null,
   })
   emit('update:open', false)
 }

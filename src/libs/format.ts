@@ -1,6 +1,6 @@
 // Formatação e conversão puras (sem estado, sem regra de negócio) compartilhadas por composables e views.
-// Dinheiro da API é sempre inteiro em centavos; datas são YYYY-MM-DD; horários vêm como HH:MM:SS
-// (dashboard-api-routes.md §1.1).
+// Dinheiro da API é sempre inteiro em centavos; instantes são ISO 8601 em UTC; horas do dia saem como
+// HH:mm:ss (back-api.md §1).
 
 const MONTH_NAMES = [
 	"janeiro",
@@ -47,6 +47,17 @@ export function centsToReais(cents: number): number {
 /** "14:30:00" → "14:30". */
 export function formatTime(time: string): string {
 	return time.slice(0, 5);
+}
+
+// Telefone da API: só dígitos, com DDI, sem "+" (back-api.md §1).
+const PHONE_PATTERN = /^[1-9]\d{9,14}$/;
+
+export function onlyDigits(value: string): string {
+	return value.replace(/\D/g, "");
+}
+
+export function isValidPhone(digits: string): boolean {
+	return PHONE_PATTERN.test(digits);
 }
 
 /** "5511999999999" → "+55 (11) 99999-9999"; formatos desconhecidos voltam como vieram. */
@@ -105,4 +116,32 @@ export function todayInTimezone(timeZone: string): string {
 		month: "2-digit",
 		day: "2-digit",
 	}).format(new Date());
+}
+
+function zonedParts(instant: string, timeZone: string) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(new Date(instant));
+	const part = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((candidate) => candidate.type === type)?.value ?? "";
+	return {
+		date: `${part("year")}-${part("month")}-${part("day")}`,
+		time: `${part("hour")}:${part("minute")}`,
+	};
+}
+
+/** Instante ISO (UTC) → data "YYYY-MM-DD" no fuso informado. */
+export function isoDateInTimezone(instant: string, timeZone: string): string {
+	return zonedParts(instant, timeZone).date;
+}
+
+/** Instante ISO (UTC) → hora "HH:mm" no fuso informado. */
+export function timeInTimezone(instant: string, timeZone: string): string {
+	return zonedParts(instant, timeZone).time;
 }

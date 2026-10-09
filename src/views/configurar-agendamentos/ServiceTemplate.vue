@@ -9,14 +9,14 @@ import { useServiceTemplates } from '@composables/useServiceTemplates'
 
 defineProps<{ warning: string | null }>()
 
-const activeTemplateId = defineModel<string | null>('activeTemplateId', { required: true })
+const selectedTemplateId = defineModel<string | null>('selectedTemplateId', { required: true })
 
 const router = useRouter()
 const { options, isLoading, createTemplate } = useServiceTemplates()
 
 const chooseTemplateOpen = ref(false)
 
-const selectedTemplate = computed(() => options.value.find(option => option.id === activeTemplateId.value) ?? null)
+const selectedTemplate = computed(() => options.value.find(option => option.id === selectedTemplateId.value) ?? null)
 
 const questionCountLabel = computed(() => {
   const count = selectedTemplate.value?.questionCount
@@ -26,7 +26,7 @@ const questionCountLabel = computed(() => {
 })
 
 function selectTemplate(id: string) {
-  activeTemplateId.value = id
+  selectedTemplateId.value = id
   chooseTemplateOpen.value = false
 }
 
@@ -45,13 +45,13 @@ async function createAndOpenTemplate() {
 <template>
   <section aria-labelledby="service-template-title" class="flex flex-col gap-2.5">
     <h2 id="service-template-title" class="text-foreground text-tag">
-      Modelo usado
+      Serviço
     </h2>
 
     <Card class="flex-row items-center justify-between gap-3 rounded-2xl p-3.5 ring-0">
       <div class="flex min-w-0 flex-col gap-0.5">
         <p class="truncate text-foreground text-item-title">
-          {{ selectedTemplate?.name ?? 'Nenhum modelo escolhido' }}
+          {{ selectedTemplate?.name ?? 'Nenhum serviço escolhido' }}
         </p>
         <p v-if="questionCountLabel" class="text-label text-muted-foreground">
           {{ questionCountLabel }}
@@ -71,7 +71,7 @@ async function createAndOpenTemplate() {
     <ChooseTemplateSheet
       v-model:open="chooseTemplateOpen"
       :options="options"
-      :selected-id="activeTemplateId"
+      :selected-id="selectedTemplateId"
       :is-creating="isLoading"
       @select="selectTemplate"
       @create="createAndOpenTemplate"

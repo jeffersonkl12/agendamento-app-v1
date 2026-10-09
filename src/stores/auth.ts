@@ -4,6 +4,7 @@ import {
 	resetPassword as resetPasswordWithToken,
 	type SignInEmailInput,
 	type SignUpEmailInput,
+	sendVerificationEmail,
 	signInWithEmail,
 	signInWithGoogle,
 	signOut as signOutUser,
@@ -94,8 +95,12 @@ export const useAuthStore = defineStore("auth", () => {
 		return result;
 	}
 
-	async function signInGoogle(callbackURL: string) {
-		return run(() => signInWithGoogle(callbackURL));
+	async function signInGoogle(callbackURL: string, errorCallbackURL: string) {
+		return run(() => signInWithGoogle(callbackURL, errorCallbackURL));
+	}
+
+	async function resendVerification(email: string, callbackURL: string) {
+		return run(() => sendVerificationEmail(email, callbackURL));
 	}
 
 	async function signOut() {
@@ -122,6 +127,7 @@ export const useAuthStore = defineStore("auth", () => {
 		signUp,
 		signIn,
 		signInGoogle,
+		resendVerification,
 		signOut,
 		forgotPassword,
 		resetPassword,

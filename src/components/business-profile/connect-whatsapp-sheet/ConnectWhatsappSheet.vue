@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 const {
   isConnected,
-  qrCodeBase64,
+  qrCode,
   pairingCode,
   isGeneratingQr,
   errorMessage,
@@ -50,8 +50,8 @@ function formatBrazilianPhone(digits: string): string {
   return suffix ? `(${ddd}) ${localPart}-${suffix}` : `(${ddd}) ${localPart}`
 }
 
-// §4: o código de pareamento só nasce se o telefone já vier na chamada que cria a instância — por
-// isso ele é pedido antes da primeira tentativa, não depois de já ter gerado um QR sem telefone.
+// back-api.md §4: o código de pareamento só vem se o telefone for enviado na chamada — por
+// isso ele é pedido antes da primeira tentativa.
 const phoneDigits = ref('')
 // Reformatar em cada tecla (inserindo "(", ")", "-") entra em conflito com o cursor do input e
 // perde dígito no meio da digitação. Mostrar os dígitos crus enquanto o campo está focado e só
@@ -176,8 +176,8 @@ onUnmounted(() => {
         <div class="flex size-56 items-center justify-center rounded-2xl bg-card">
           <Spinner v-if="isGeneratingQr" class="size-8 text-muted-foreground" />
           <img
-            v-else-if="qrCodeBase64"
-            :src="qrCodeBase64"
+            v-else-if="qrCode"
+            :src="qrCode"
             alt="QR code para conectar o WhatsApp do seu negócio"
             class="size-full rounded-2xl object-contain"
           >
@@ -209,7 +209,7 @@ onUnmounted(() => {
         </div>
 
         <button
-          v-if="!isGeneratingQr && !qrCodeBase64"
+          v-if="!isGeneratingQr"
           type="button"
           class="text-primary text-tag"
           @click="requestConnection"

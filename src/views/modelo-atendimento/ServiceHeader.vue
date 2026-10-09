@@ -12,7 +12,6 @@ const router = useRouter()
 const {
   template,
   basePriceReais,
-  isInUse,
   isSavingTemplate,
   rename,
   updateBasePrice,
@@ -71,8 +70,7 @@ async function confirmDeleteTemplate() {
 <template>
   <section aria-labelledby="service-name" class="flex flex-col gap-3.5">
     <p class="text-caption-md text-muted-foreground">
-      As perguntas que o bot vai enviar no WhatsApp
-      <span v-if="isInUse" class="text-primary text-tag"> · em uso pelo bot</span>
+      As perguntas que o assistente vai fazer no WhatsApp
     </p>
 
     <Card class="flex-row items-center justify-between gap-3 rounded-2xl p-3.5 ring-0">
@@ -134,8 +132,7 @@ async function confirmDeleteTemplate() {
 
     <button
       type="button"
-      :disabled="isInUse || isSavingTemplate"
-      :title="isInUse ? 'Escolha outro modelo em Configurar agendamentos antes de excluir este.' : undefined"
+      :disabled="isSavingTemplate"
       class="w-fit self-end text-error text-tag disabled:text-muted-foreground-soft"
       @click="deleteConfirmOpen = true"
     >
@@ -145,7 +142,7 @@ async function confirmDeleteTemplate() {
     <ConfirmDialog
       :open="deleteConfirmOpen"
       title="Excluir este modelo?"
-      description="O modelo e todas as perguntas dele serão removidos. Agendamentos antigos não são afetados."
+      description="O modelo, a agenda e todas as perguntas dele serão removidos. Agendamentos antigos permanecem, sem o vínculo com este modelo."
       confirm-label="Excluir"
       @update:open="deleteConfirmOpen = $event"
       @confirm="confirmDeleteTemplate"

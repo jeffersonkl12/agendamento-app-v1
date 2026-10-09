@@ -1,58 +1,71 @@
 import { http } from "@services/http";
-import type { QuestionType } from "@services/service-template-question";
 
-export type AppointmentStatus = "AWAITING" | "CONFIRMED" | "CANCELED";
-export type AppointmentOrigin = "WHATSAPP";
+export type AppointmentStatus = "pending" | "scheduled" | "completed" | "canceled" | "no_show";
 
 export interface Appointment {
 	id: string;
-	businessOwnerId: string;
+	userId: string;
 	customerId: string;
-	templateId: string;
-	templateVersion: number;
-	date: string;
-	startTime: string;
-	totalValue: number;
+	/** `null` quando o serviço foi excluído depois do agendamento. */
+	templateId: string | null;
 	status: AppointmentStatus;
-	origin: AppointmentOrigin;
-	idempotencyKey: string;
+	/** ISO 8601 em UTC. */
+	startsAt: string;
+	durationMinutes: number | null;
+	basePriceInCents: number | null;
+	totalPriceInCents: number;
+	notes: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export interface AppointmentAnswer {
-	id: string;
-	appointmentId: string;
-	questionTitle: string;
-	questionType: QuestionType;
-	answer: string;
-	appliedPrice: number | null;
-	order: number;
-	createdAt: string;
-	updatedAt: string;
+export interface ListAppointmentsParams {
+	customerId?: string;
+	status?: AppointmentStatus;
+	/** Limite inferior inclusivo de `startsAt` (ISO). */
+	from?: string;
+	/** Limite superior inclusivo de `startsAt` (ISO). */
+	to?: string;
 }
 
-export interface AppointmentDetail extends Appointment {
-	answers: AppointmentAnswer[];
+export interface CreateAppointmentInput {
+	customerId: string;
+	startsAt: string;
+	templateId?: string | null;
+	status?: AppointmentStatus;
+	durationMinutes?: number | null;
+	basePriceInCents?: number | null;
+	totalPriceInCents?: number;
+	notes?: string | null;
 }
 
-// Criação (POST /appointments) é uso exclusivo do bot — não expor no painel (dashboard-api-routes.md §10/§12).
-export async function listAppointments() {
-	const { data } = await http.get<Appointment[]>("/appointments");
+// `customerId` e `templateId` são imutáveis.
+export type UpdateAppointmentInput = Partial<
+	Omit<CreateAppointmentInput, "customerId" | "templateId">
+>;
+
+// Ordem `startsAt` decrescente, sem paginação (back-api.md §5.7). O CRUD é "cru": não calcula
+// preço nem valida disponibilidade.
+export async function listAppointments(params?: ListAppointmentsParams) {
+	const { data } = await http.get<Appointment[]>("/appointments", { params });
 	return data;
 }
 
 export async function getAppointment(id: string) {
-	const { data } = await http.get<AppointmentDetail>(`/appointments/${id}`);
+	const { data } = await http.get<Appointment>(`/appointments/${id}`);
 	return data;
 }
 
-export async function cancelAppointment(id: string) {
-	const { data } = await http.post<Appointment>(`/appointments/${id}/cancel`);
+export async function createAppointment(input: CreateAppointmentInput) {
+	const { data } = await http.post<Appointment>("/appointments", input);
 	return data;
 }
 
-export async function confirmAppointment(id: string) {
-	const { data } = await http.post<Appointment>(`/appointments/${id}/confirm`);
+export async function updateAppointment(id: string, input: UpdateAppointmentInput) {
+	const { data } = await http.patch<Appointment>(`/appointments/${id}`, input);
 	return data;
+}
+
+export async function deleteAppointment(id: string) {
+	await http.delete(`/appointments/${id}`);
 }

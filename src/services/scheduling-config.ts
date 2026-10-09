@@ -1,43 +1,46 @@
 import { http } from "@services/http";
 
+export type Weekday =
+	| "monday"
+	| "tuesday"
+	| "wednesday"
+	| "thursday"
+	| "friday"
+	| "saturday"
+	| "sunday";
+
+/** Quando o profissional atende para UM serviço; no máximo uma por serviço (back-api.md §5.4). */
 export interface SchedulingConfig {
 	id: string;
-	businessOwnerId: string;
-	mondayEnabled: boolean;
-	tuesdayEnabled: boolean;
-	wednesdayEnabled: boolean;
-	thursdayEnabled: boolean;
-	fridayEnabled: boolean;
-	saturdayEnabled: boolean;
-	sundayEnabled: boolean;
-	startTime: string;
-	endTime: string;
-	intervalMinutes: number;
-	activeTemplateId: string | null;
+	userId: string;
+	templateId: string;
+	openDays: Weekday[];
+	/** Sempre `HH:mm:ss` na saída. */
+	openTime: string;
+	closeTime: string;
+	/** `null` = qualquer horário livre dentro do expediente. */
+	intervalMinutes: number | null;
 	timezone: string;
 	createdAt: string;
 	updatedAt: string;
 }
 
 export interface CreateSchedulingConfigInput {
-	mondayEnabled?: boolean;
-	tuesdayEnabled?: boolean;
-	wednesdayEnabled?: boolean;
-	thursdayEnabled?: boolean;
-	fridayEnabled?: boolean;
-	saturdayEnabled?: boolean;
-	sundayEnabled?: boolean;
-	startTime: string;
-	endTime: string;
-	intervalMinutes?: number;
-	activeTemplateId?: string | null;
+	templateId: string;
+	openDays: Weekday[];
+	/** `HH:mm` (ou `HH:mm:ss`). */
+	openTime: string;
+	closeTime: string;
+	intervalMinutes?: number | null;
+	/** Nome IANA; o padrão do back é `America/Sao_Paulo`. */
 	timezone?: string;
 }
 
-export type UpdateSchedulingConfigInput = Partial<CreateSchedulingConfigInput>;
+// `templateId` é imutável.
+export type UpdateSchedulingConfigInput = Partial<Omit<CreateSchedulingConfigInput, "templateId">>;
 
-export async function getMySchedulingConfig() {
-	const { data } = await http.get<SchedulingConfig>("/scheduling-configs/me");
+export async function listSchedulingConfigs() {
+	const { data } = await http.get<SchedulingConfig[]>("/scheduling-configs");
 	return data;
 }
 
@@ -46,7 +49,11 @@ export async function createSchedulingConfig(input: CreateSchedulingConfigInput)
 	return data;
 }
 
-export async function updateMySchedulingConfig(input: UpdateSchedulingConfigInput) {
-	const { data } = await http.patch<SchedulingConfig>("/scheduling-configs/me", input);
+export async function updateSchedulingConfig(id: string, input: UpdateSchedulingConfigInput) {
+	const { data } = await http.patch<SchedulingConfig>(`/scheduling-configs/${id}`, input);
 	return data;
+}
+
+export async function deleteSchedulingConfig(id: string) {
+	await http.delete(`/scheduling-configs/${id}`);
 }

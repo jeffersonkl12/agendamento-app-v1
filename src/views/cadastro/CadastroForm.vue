@@ -10,6 +10,7 @@ import { Button } from '@components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
 import { Separator } from '@components/ui/separator'
 import { useAuth } from '@composables/useAuth'
+import { isValidPhone, onlyDigits } from '@libs/format'
 
 const MESSAGE_CLASS = 'text-label text-error'
 
@@ -21,7 +22,15 @@ const schema = toTypedSchema(
         .string({ message: 'Informe seu e-mail' })
         .min(1, 'Informe seu e-mail')
         .email('Informe um e-mail válido'),
-      password: z.string({ message: 'Informe uma senha' }).min(1, 'Informe uma senha'),
+      tradeName: z.string().trim().max(120, 'Use no máximo 120 caracteres').optional(),
+      phone: z
+        .string()
+        .optional()
+        .refine(value => !value || isValidPhone(onlyDigits(value)), 'Informe DDI + DDD + número (ex.: 5511999998888)'),
+      password: z
+        .string({ message: 'Informe uma senha' })
+        .min(8, 'A senha deve ter de 8 a 128 caracteres')
+        .max(128, 'A senha deve ter de 8 a 128 caracteres'),
       confirmPassword: z.string({ message: 'Confirme sua senha' }).min(1, 'Confirme sua senha'),
     })
     .refine(values => values.password === values.confirmPassword, {
@@ -32,12 +41,19 @@ const schema = toTypedSchema(
 
 const { signUp, signInWithGoogle, isLoading } = useAuth()
 
+function optionalText(value: unknown): string | undefined {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text || undefined
+}
+
 // A API não recebe "confirmar senha" — a checagem é só do front (RN-AU02, feita no schema).
 async function onSubmit(values: Record<string, unknown>) {
   const result = await signUp({
     name: String(values.name),
     email: String(values.email),
     password: String(values.password),
+    tradeName: optionalText(values.tradeName),
+    phone: optionalText(values.phone) && onlyDigits(String(values.phone)),
   })
   if (result.success)
     toast.success(result.message ?? '', { duration: 10000 })
@@ -108,6 +124,41 @@ async function onGoogleSignIn() {
                 autocomplete="email"
                 inputmode="email"
                 placeholder="E-mail"
+                v-bind="componentField"
+              />
+            </FormControl>
+            <FormMessage :class="MESSAGE_CLASS" />
+          </FormItem>
+        </FormField>
+
+        <FormField v-slot="{ componentField }" name="tradeName">
+          <FormItem>
+            <FormLabel class="sr-only">
+              Nome do negócio (opcional)
+            </FormLabel>
+            <FormControl>
+              <AuthInput
+                type="text"
+                autocomplete="organization"
+                placeholder="Nome do negócio (opcional)"
+                v-bind="componentField"
+              />
+            </FormControl>
+            <FormMessage :class="MESSAGE_CLASS" />
+          </FormItem>
+        </FormField>
+
+        <FormField v-slot="{ componentField }" name="phone">
+          <FormItem>
+            <FormLabel class="sr-only">
+              Telefone (opcional)
+            </FormLabel>
+            <FormControl>
+              <AuthInput
+                type="tel"
+                autocomplete="tel"
+                inputmode="tel"
+                placeholder="Telefone com DDI e DDD (opcional)"
                 v-bind="componentField"
               />
             </FormControl>

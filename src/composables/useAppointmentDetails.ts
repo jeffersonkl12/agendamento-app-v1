@@ -1,5 +1,6 @@
 import { useAppointmentSummary } from "@composables/useAppointmentSummary";
 import { formatCurrency } from "@libs/format";
+import type { AppointmentAnswer } from "@services/appointment-answer";
 import { useAppointmentStore } from "@stores/appointment";
 import { computed, ref } from "vue";
 
@@ -16,11 +17,19 @@ export interface AppointmentActionResult {
 	message: string;
 }
 
-const CANCEL_CONFLICT_MESSAGE = "Este agendamento já tinha sido cancelado ou expirou.";
+const CANCEL_CONFLICT_MESSAGE = "Este agendamento já tinha sido cancelado ou concluído.";
+
+/** O `value` da resposta tem o formato do `questionType` (back-api.md §5.5). */
+function formatAnswerValue(answer: AppointmentAnswer): string {
+	const { value } = answer;
+	if (typeof value === "boolean") return value ? "Sim" : "Não";
+	if (Array.isArray(value)) return value.join(", ");
+	return String(value);
+}
 
 /**
- * Detalhe de um agendamento (dashboard-api-routes.md §10.3): carrega as respostas só ao abrir,
- * exibe o snapshot (RN-S01) — não as perguntas atuais do modelo — e trata o cancelamento (RN-A01).
+ * Detalhe de um agendamento (back-api.md §5.7/§5.8): carrega as respostas só ao abrir, exibe o
+ * snapshot (RN-S01) — não as perguntas atuais do serviço — e trata o cancelamento (RN-A01).
  */
 export function useAppointmentDetails() {
 	const appointmentStore = useAppointmentStore();
@@ -39,48 +48,43 @@ export function useAppointmentDetails() {
 		selectedAppointment.value ? toSummary(selectedAppointment.value) : null,
 	);
 
-	const detail = computed(() =>
-		selectedId.value ? appointmentStore.detailsById[selectedId.value] : undefined,
-	);
-
-	const sortedAnswers = computed(() =>
-		[...(detail.value?.answers ?? [])].sort((a, b) => a.order - b.order),
+	const storedAnswers = computed(() =>
+		selectedId.value ? (appointmentStore.answersByAppointmentId[selectedId.value] ?? []) : [],
 	);
 
 	const answers = computed<AppointmentAnswerItem[]>(() =>
-		sortedAnswers.value.map((answer) => ({
+		storedAnswers.value.map((answer) => ({
 			id: answer.id,
-			title: answer.questionTitle,
-			answer: answer.answer,
-			priceLabel: answer.appliedPrice ? formatCurrency(answer.appliedPrice) : null,
+			title: answer.questionLabel,
+			answer: formatAnswerValue(answer),
+			priceLabel: answer.priceInCents ? formatCurrency(answer.priceInCents) : null,
 		})),
 	);
 
-	// RN-S03: o "serviço" é a resposta da primeira pergunta SINGLE do snapshot.
-	const serviceLabel = computed(
-		() =>
-			sortedAnswers.value.find((answer) => answer.questionType === "SINGLE")?.answer ??
-			summary.value?.templateName ??
-			"",
-	);
-
-	// §10.3: totalValue − Σ appliedPrice = valor base do modelo naquela versão.
-	const baseValueLabel = computed(() => {
-		if (!detail.value) return null;
-		const answersTotal = detail.value.answers.reduce(
-			(total, answer) => total + (answer.appliedPrice ?? 0),
-			0,
+	// RN-S03: o "serviço" é a resposta da primeira pergunta de escolha única do snapshot.
+	const serviceLabel = computed(() => {
+		const singleChoice = storedAnswers.value.find(
+			(answer) => answer.questionType === "single_choice",
 		);
-		return formatCurrency(detail.value.totalValue - answersTotal);
+		return singleChoice ? formatAnswerValue(singleChoice) : (summary.value?.templateName ?? "");
 	});
 
-	const canCancel = computed(() => summary.value !== null && summary.value.status !== "CANCELED");
+	// O agendamento guarda o preço base congelado; `null` quando o serviço não tinha preço base.
+	const baseValueLabel = computed(() => {
+		const basePrice = selectedAppointment.value?.basePriceInCents;
+		return basePrice == null ? null : formatCurrency(basePrice);
+	});
+
+	// O cliente só altera/cancela enquanto `pending`/`scheduled` (back-api.md §5.7).
+	const canCancel = computed(
+		() => summary.value?.status === "pending" || summary.value?.status === "scheduled",
+	);
 
 	async function open(id: string) {
 		selectedId.value = id;
 		isOpen.value = true;
 		isDetailLoading.value = true;
-		await appointmentStore.fetchAppointmentDetail(id);
+		await appointmentStore.fetchAnswers(id);
 		isDetailLoading.value = false;
 	}
 
@@ -88,15 +92,15 @@ export function useAppointmentDetails() {
 		if (!selectedId.value) return { success: false, message: CANCEL_CONFLICT_MESSAGE };
 
 		isCancelling.value = true;
-		const result = await appointmentStore.cancel(selectedId.value);
+		const result = await appointmentStore.setStatus(selectedId.value, "canceled");
 		isCancelling.value = false;
 
 		if (result) {
 			isOpen.value = false;
 			return { success: true, message: "Agendamento cancelado. O horário foi liberado." };
 		}
-		// 409: o status mudou por fora (expiração automática do AWAITING — §10.1); a lista é recarregada.
-		if (appointmentStore.errorStatus === 409) {
+		// 404/422: o agendamento mudou por fora (ex.: o cliente cancelou pelo WhatsApp); recarrega a lista.
+		if (appointmentStore.errorStatus === 404 || appointmentStore.errorStatus === 422) {
 			await appointmentStore.fetchAppointments();
 			return { success: false, message: CANCEL_CONFLICT_MESSAGE };
 		}

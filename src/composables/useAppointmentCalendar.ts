@@ -1,6 +1,12 @@
 import { useProviderTimezone } from "@composables/useProviderTimezone";
-import { formatLongDate, formatMonthYear, todayInTimezone, toIsoDate } from "@libs/format";
-import type { SchedulingConfig } from "@services/scheduling-config";
+import {
+	formatLongDate,
+	formatMonthYear,
+	isoDateInTimezone,
+	todayInTimezone,
+	toIsoDate,
+} from "@libs/format";
+import type { Weekday } from "@services/scheduling-config";
 import { useAppointmentStore } from "@stores/appointment";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
 import { computed } from "vue";
@@ -18,15 +24,15 @@ export interface CalendarDay {
 /** Célula vazia completa a última semana — o design nunca mostra dias do mês seguinte. */
 export type CalendarCell = CalendarDay | null;
 
-const WEEKDAY_ENABLED_KEYS = [
-	"mondayEnabled",
-	"tuesdayEnabled",
-	"wednesdayEnabled",
-	"thursdayEnabled",
-	"fridayEnabled",
-	"saturdayEnabled",
-	"sundayEnabled",
-] as const satisfies readonly (keyof SchedulingConfig)[];
+const WEEKDAYS_MONDAY_FIRST: readonly Weekday[] = [
+	"monday",
+	"tuesday",
+	"wednesday",
+	"thursday",
+	"friday",
+	"saturday",
+	"sunday",
+];
 
 const STATE_ARIA_SUFFIX: Record<CalendarDayState, string> = {
 	"has-appointments": ", com agendamentos",
@@ -34,20 +40,15 @@ const STATE_ARIA_SUFFIX: Record<CalendarDayState, string> = {
 	unavailable: ", sem atendimento",
 };
 
-function isDayEnabled(config: SchedulingConfig, date: Date): boolean {
-	const mondayFirstIndex = (date.getDay() + 6) % 7;
-	return config[WEEKDAY_ENABLED_KEYS[mondayFirstIndex]];
-}
-
 /**
- * Calendário da agenda (dashboard-api-routes.md §11, RN-G01…G07): semana começa na segunda;
- * "tem agendamentos" vence mesmo em dia desabilitado (agendamentos antigos continuam visíveis —
- * RN-C04), senão o estado depende de o dia estar habilitado na configuração.
+ * Calendário da agenda (RN-G01…G07): semana começa na segunda; "tem agendamentos" vence mesmo em
+ * dia desabilitado (agendamentos antigos continuam visíveis — RN-C04), senão o dia está disponível
+ * se algum serviço atende nele (`openDays` das configurações — back-api.md §5.4).
  */
 export function useAppointmentCalendar() {
 	const appointmentStore = useAppointmentStore();
 	const configStore = useSchedulingConfigStore();
-	const timezone = useProviderTimezone();
+	const { timezone, timezoneOf } = useProviderTimezone();
 
 	const today = computed(() => todayInTimezone(timezone.value));
 
@@ -55,14 +56,21 @@ export function useAppointmentCalendar() {
 		() =>
 			new Set(
 				appointmentStore.appointments
-					.filter((appointment) => appointment.status !== "CANCELED")
-					.map((appointment) => appointment.date),
+					.filter((appointment) => appointment.status !== "canceled")
+					.map((appointment) =>
+						isoDateInTimezone(appointment.startsAt, timezoneOf(appointment.templateId)),
+					),
 			),
+	);
+
+	const openWeekdays = computed(
+		() => new Set(configStore.configs.flatMap((config) => config.openDays)),
 	);
 
 	function getDayState(date: Date): CalendarDayState {
 		if (datesWithAppointments.value.has(toIsoDate(date))) return "has-appointments";
-		if (configStore.config && isDayEnabled(configStore.config, date)) return "available";
+		const mondayFirstIndex = (date.getDay() + 6) % 7;
+		if (openWeekdays.value.has(WEEKDAYS_MONDAY_FIRST[mondayFirstIndex])) return "available";
 		return "unavailable";
 	}
 

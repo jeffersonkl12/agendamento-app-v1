@@ -1,6 +1,7 @@
-import { useBusinessProfileStore } from "@stores/business-profile";
+import { useAppointmentTemplateStore } from "@stores/appointment-template";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
-import { useServiceTemplateQuestionStore } from "@stores/service-template-question";
+import { useUserStore } from "@stores/user";
+import { useWhatsappStore } from "@stores/whatsapp";
 import { computed, ref } from "vue";
 
 export interface OnboardingPendingItem {
@@ -10,68 +11,56 @@ export interface OnboardingPendingItem {
 }
 
 /**
- * Checklist de "bot pronto" (dashboard-api-routes.md §3): o bot só agenda quando perfil,
- * configuração de agenda, modelo em uso e pelo menos uma pergunta do modelo existem.
+ * Checklist de "assistente pronto" (back-api.md §7.1): o assistente só atende com o WhatsApp
+ * conectado e só oferece horários de serviços que têm agenda configurada. O perfil completo
+ * (nome do negócio e telefone) fecha o onboarding; o questionário do serviço é opcional.
  */
 export function useOnboardingStatus() {
-	const businessProfileStore = useBusinessProfileStore();
-	const schedulingConfigStore = useSchedulingConfigStore();
-	const questionStore = useServiceTemplateQuestionStore();
+	const userStore = useUserStore();
+	const whatsappStore = useWhatsappStore();
+	const templateStore = useAppointmentTemplateStore();
+	const configStore = useSchedulingConfigStore();
 
 	const isLoaded = ref(false);
 
-	const hasBusinessProfile = computed(() => businessProfileStore.profile !== null);
-	const hasWhatsappConnected = computed(
-		() => businessProfileStore.profile?.whatsappInstanceName != null,
+	const hasCompleteProfile = computed(
+		() => !!userStore.profile?.tradeName && !!userStore.profile?.phone,
 	);
-	const hasSchedulingConfig = computed(() => schedulingConfigStore.config !== null);
+	const hasWhatsappConnected = computed(() => whatsappStore.status === "connected");
+	const hasService = computed(() => templateStore.templates.length > 0);
 
-	const activeTemplateId = computed(() => schedulingConfigStore.config?.activeTemplateId ?? null);
-	const hasActiveTemplate = computed(() => activeTemplateId.value !== null);
-
-	const activeTemplateQuestions = computed(() => {
-		if (!activeTemplateId.value) return [];
-		return questionStore.questionsByTemplateId[activeTemplateId.value] ?? [];
-	});
-
-	const activeTemplateHasQuestions = computed(() => activeTemplateQuestions.value.length > 0);
+	const templatesWithoutSchedule = computed(() =>
+		templateStore.templates.filter((template) => !configStore.configByTemplateId.has(template.id)),
+	);
+	const hasSchedulableService = computed(
+		() =>
+			hasService.value && templatesWithoutSchedule.value.length < templateStore.templates.length,
+	);
 
 	const isBotReady = computed(
-		() =>
-			hasBusinessProfile.value &&
-			hasWhatsappConnected.value &&
-			hasSchedulingConfig.value &&
-			hasActiveTemplate.value &&
-			activeTemplateHasQuestions.value,
+		() => hasWhatsappConnected.value && hasSchedulableService.value && hasCompleteProfile.value,
 	);
 
-	// Na ordem do onboarding (§3), cada item aponta pra tela que resolve a pendência.
+	// Na ordem do onboarding (§7.1), cada item aponta pra tela que resolve a pendência.
 	const pendingItems = computed<OnboardingPendingItem[]>(() => {
 		const items: OnboardingPendingItem[] = [];
-		if (!hasBusinessProfile.value) {
-			items.push({ id: "profile", label: "Cadastre o nome do seu negócio", to: "/perfil" });
+		if (!hasCompleteProfile.value) {
+			items.push({
+				id: "profile",
+				label: "Complete o nome do negócio e o telefone",
+				to: "/perfil",
+			});
 		}
 		if (!hasWhatsappConnected.value) {
 			items.push({ id: "whatsapp", label: "Conecte o WhatsApp do seu negócio", to: "/perfil" });
 		}
-		if (!hasSchedulingConfig.value) {
+		if (!hasService.value) {
+			items.push({ id: "service", label: "Crie seu primeiro serviço", to: "/modelo-atendimento" });
+		} else if (!hasSchedulableService.value) {
 			items.push({
-				id: "config",
-				label: "Defina dias e horários de atendimento",
+				id: "schedule",
+				label: "Defina dias e horários de atendimento de um serviço",
 				to: "/configurar-agendamentos",
-			});
-		}
-		if (!hasActiveTemplate.value) {
-			items.push({
-				id: "template",
-				label: "Escolha o modelo de atendimento usado pelo bot",
-				to: "/configurar-agendamentos",
-			});
-		} else if (!activeTemplateHasQuestions.value) {
-			items.push({
-				id: "questions",
-				label: "Adicione ao menos uma pergunta ao modelo em uso",
-				to: `/modelo-atendimento/${activeTemplateId.value}`,
 			});
 		}
 		return items;
@@ -79,21 +68,19 @@ export function useOnboardingStatus() {
 
 	async function loadStatus() {
 		await Promise.all([
-			businessProfileStore.ensureMyProfile(),
-			schedulingConfigStore.ensureMyConfig(),
+			userStore.ensureMe(),
+			whatsappStore.fetchStatus(),
+			templateStore.ensureTemplates(),
+			configStore.ensureConfigs(),
 		]);
-		if (activeTemplateId.value) {
-			await questionStore.fetchQuestions(activeTemplateId.value);
-		}
 		isLoaded.value = true;
 	}
 
 	return {
-		hasBusinessProfile,
+		hasCompleteProfile,
 		hasWhatsappConnected,
-		hasSchedulingConfig,
-		hasActiveTemplate,
-		activeTemplateHasQuestions,
+		hasService,
+		hasSchedulableService,
 		isBotReady,
 		isLoaded,
 		pendingItems,

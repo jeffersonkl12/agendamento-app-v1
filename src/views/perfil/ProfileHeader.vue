@@ -5,8 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@components/ui/avatar'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { useBusinessProfile } from '@composables/useBusinessProfile'
+import { formatPhone } from '@libs/format'
 
-const { businessName, photoUrl, initials, isSaving, saveBusinessName } = useBusinessProfile()
+const { businessName, phone, photoUrl, initials, isSaving, saveBusinessName, savePhone } = useBusinessProfile()
 
 const isEditingName = ref(false)
 const editedName = ref('')
@@ -34,17 +35,44 @@ function toggleEditName() {
   else
     startEditing()
 }
+
+const isEditingPhone = ref(false)
+const editedPhone = ref('')
+const phoneInputRef = ref<InstanceType<typeof Input>>()
+
+function startEditingPhone() {
+  editedPhone.value = phone.value ?? ''
+  isEditingPhone.value = true
+  nextTick(() => phoneInputRef.value?.select())
+}
+
+async function saveEditedPhone() {
+  const result = await savePhone(editedPhone.value)
+  if (!result.success) {
+    toast.error(result.message)
+    return
+  }
+  isEditingPhone.value = false
+  toast.success(result.message)
+}
+
+function toggleEditPhone() {
+  if (isEditingPhone.value)
+    saveEditedPhone()
+  else
+    startEditingPhone()
+}
 </script>
 
 <template>
   <section class="flex flex-col gap-6" aria-labelledby="profile-header-name">
     <p class="text-caption-md text-muted-foreground">
-      Seus dados e assinatura
+      Seus dados
     </p>
 
     <div class="flex flex-col items-center gap-2.5">
       <Avatar class="size-21">
-        <AvatarImage v-if="photoUrl" :src="photoUrl" :alt="`Foto de ${businessName ?? 'seu negócio'}`" />
+        <AvatarImage v-if="photoUrl" :src="photoUrl" :alt="`Foto de ${businessName ?? 'seu negócio'}`" referrerpolicy="no-referrer" />
         <AvatarFallback class="bg-primary-soft text-label-lg text-primary">
           {{ initials || 'Sua foto' }}
         </AvatarFallback>
@@ -59,7 +87,7 @@ function toggleEditName() {
             ref="nameInputRef"
             v-model="editedName"
             aria-label="Nome do negócio"
-            maxlength="255"
+            maxlength="120"
             class="h-auto w-full border-0 bg-transparent p-0 text-foreground text-heading-sm focus-visible:ring-0 md:text-heading-sm"
             @keydown.enter.prevent="saveName"
           />
@@ -82,6 +110,42 @@ function toggleEditName() {
         @click="toggleEditName"
       >
         {{ isEditingName ? 'Salvar' : (businessName ? 'Editar' : 'Definir') }}
+      </Button>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 rounded-2xl bg-card p-3.5">
+      <div class="flex min-w-0 flex-1 flex-col">
+        <h2 id="profile-header-phone" class="text-heading-sm text-foreground">
+          <Input
+            v-if="isEditingPhone"
+            ref="phoneInputRef"
+            v-model="editedPhone"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            aria-label="Telefone"
+            class="h-auto w-full border-0 bg-transparent p-0 text-foreground text-heading-sm focus-visible:ring-0 md:text-heading-sm"
+            @keydown.enter.prevent="saveEditedPhone"
+          />
+          <template v-else>
+            {{ phone ? formatPhone(phone) : 'Nenhum telefone cadastrado' }}
+          </template>
+        </h2>
+        <p class="text-label text-muted-foreground">
+          Telefone com DDI e DDD, só números
+        </p>
+      </div>
+      <Button
+        type="button"
+        :disabled="isSaving"
+        :aria-label="isEditingPhone ? 'Salvar telefone' : 'Editar telefone'"
+        :class="[
+          'h-8 shrink-0 rounded-xl px-3 text-label-strong-lg',
+          isEditingPhone ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-primary-soft text-primary hover:bg-primary-soft/80',
+        ]"
+        @click="toggleEditPhone"
+      >
+        {{ isEditingPhone ? 'Salvar' : (phone ? 'Editar' : 'Definir') }}
       </Button>
     </div>
   </section>

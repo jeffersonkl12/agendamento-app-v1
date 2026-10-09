@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { PhCheckCircle, PhWhatsappLogo } from '@phosphor-icons/vue'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { ConnectWhatsappSheet } from '@components/business-profile/connect-whatsapp-sheet'
 import { ConfirmDialog } from '@components/shared/confirm-dialog'
 import { Button } from '@components/ui/button'
 import { useWhatsappConnection } from '@composables/useWhatsappConnection'
 
-const { isConnected, disconnect } = useWhatsappConnection()
+const { isConnected, load, disconnect } = useWhatsappConnection()
+
+onMounted(load)
 
 const sheetOpen = ref(false)
 const disconnectOpen = ref(false)

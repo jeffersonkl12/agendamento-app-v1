@@ -13,7 +13,7 @@ const route = useRoute()
 const menuOpen = ref(false)
 const logoutOpen = ref(false)
 
-const { initials, load: loadBusinessProfile } = useBusinessProfile()
+const { initials, photoUrl, load: loadBusinessProfile } = useBusinessProfile()
 const { logout } = useAuth()
 
 onMounted(loadBusinessProfile)
@@ -29,7 +29,7 @@ async function confirmLogout() {
   <NavBar @menu-click="menuOpen = true">
     {{ route.meta.title }}
     <template #actions>
-      <AvatarMenu :initials="initials" @logout="logoutOpen = true" />
+      <AvatarMenu :initials="initials" :photo-url="photoUrl" @logout="logoutOpen = true" />
     </template>
   </NavBar>
 

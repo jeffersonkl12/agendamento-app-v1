@@ -5,9 +5,9 @@ import {
 } from "@composables/useAppointmentSummary";
 import { formatWeekdayDayMonth } from "@libs/format";
 import { useAppointmentStore } from "@stores/appointment";
+import { useAppointmentTemplateStore } from "@stores/appointment-template";
 import { useCustomerStore } from "@stores/customer";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
-import { useServiceTemplateStore } from "@stores/service-template";
 import { useEventListener, useIntervalFn } from "@vueuse/core";
 import { computed, onMounted } from "vue";
 
@@ -18,17 +18,17 @@ export interface AppointmentDateGroup {
 	items: AppointmentSummary[];
 }
 
-// O servidor expira AWAITING a cada 5 min (§10.1) — recarregar no mesmo ritmo mantém a tela fiel.
+// Não há push/WebSocket (back-api.md §7.4): agendamentos feitos pelo assistente aparecem por refetch.
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
- * Agenda do prestador (dashboard-api-routes.md §10.2/§11): junta agendamentos, clientes, modelos e
- * configuração; esconde CANCELED (RN-A03) e ordena por data/horário, já que a API não filtra nem ordena.
+ * Agenda do prestador (back-api.md §7.2): junta agendamentos, clientes, serviços e
+ * configurações de agenda; esconde `canceled` (RN-A03) e ordena por início (a API devolve decrescente).
  */
 export function useAppointmentAgenda() {
 	const appointmentStore = useAppointmentStore();
 	const customerStore = useCustomerStore();
-	const templateStore = useServiceTemplateStore();
+	const templateStore = useAppointmentTemplateStore();
 	const configStore = useSchedulingConfigStore();
 	const { toSummary } = useAppointmentSummary();
 
@@ -38,7 +38,7 @@ export function useAppointmentAgenda() {
 
 	const visibleSummaries = computed(() =>
 		appointmentStore.appointments
-			.filter((appointment) => appointment.status !== "CANCELED")
+			.filter((appointment) => appointment.status !== "canceled")
 			.sort(compareAppointmentsBySchedule)
 			.map(toSummary),
 	);
@@ -67,7 +67,7 @@ export function useAppointmentAgenda() {
 	}
 
 	async function load() {
-		await Promise.all([refresh(), templateStore.ensureTemplates(), configStore.ensureMyConfig()]);
+		await Promise.all([refresh(), templateStore.ensureTemplates(), configStore.ensureConfigs()]);
 	}
 
 	return {
@@ -82,8 +82,8 @@ export function useAppointmentAgenda() {
 }
 
 /**
- * Carrega a agenda ao montar e recarrega ao focar a janela e a cada 5 min (§10.1: AWAITING pode virar
- * CANCELED sem ação do prestador). Deve ser chamado uma vez, pela página.
+ * Carrega a agenda ao montar e recarrega ao focar a janela e a cada 5 min (o assistente cria e cancela
+ * agendamentos sem ação do profissional). Deve ser chamado uma vez, pela página.
  */
 export function useAppointmentAgendaSync() {
 	const { load, refresh } = useAppointmentAgenda();

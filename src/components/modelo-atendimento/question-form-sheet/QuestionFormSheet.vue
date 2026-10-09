@@ -20,14 +20,21 @@ interface QuestionTypeOption {
 }
 
 const QUESTION_TYPES: QuestionTypeOption[] = [
-  { value: 'TEXT', label: 'Texto livre', hint: 'Cliente escreve o que quiser, sem opções fixas' },
-  { value: 'SINGLE', label: 'Escolha única', hint: 'Cliente escolhe só uma opção da lista' },
-  { value: 'MULTI', label: 'Múltipla escolha', hint: 'Cliente pode marcar mais de uma opção' },
-  { value: 'NUMBER', label: 'Número', hint: 'Cliente informa uma quantidade' },
-  { value: 'BOOLEAN', label: 'Sim ou não', hint: 'Resposta simples, sim ou não' },
+  { value: 'free_text', label: 'Texto livre', hint: 'Cliente escreve o que quiser, sem opções fixas' },
+  { value: 'single_choice', label: 'Escolha única', hint: 'Cliente escolhe só uma opção da lista' },
+  { value: 'multiple_choice', label: 'Múltipla escolha', hint: 'Cliente pode marcar mais de uma opção' },
+  { value: 'number', label: 'Número', hint: 'Cliente informa uma quantidade' },
+  { value: 'yes_no', label: 'Sim ou não', hint: 'Resposta simples, sim ou não' },
 ]
 
-const CHOICE_TYPES: QuestionType[] = ['SINGLE', 'MULTI']
+const CHOICE_TYPES: QuestionType[] = ['single_choice', 'multiple_choice']
+
+// Texto livre, número e sim/não têm um único preço na pergunta (as de escolha têm o preço nas opções).
+const PRICE_COPY: Partial<Record<QuestionType, { title: string, hint: string }>> = {
+  free_text: { title: 'Valor da resposta', hint: 'Opcional. Cobrado uma vez, se o cliente responder.' },
+  number: { title: 'Valor por unidade', hint: 'Opcional. O número informado pelo cliente é multiplicado por esse valor.' },
+  yes_no: { title: 'Valor se a resposta for "Sim"', hint: 'Opcional. Cobrado só quando o cliente responde "Sim".' },
+}
 
 const props = defineProps<{
   open: boolean
@@ -44,22 +51,19 @@ const emit = defineEmits<{
 const DEFAULT_VALUES: QuestionDraft = {
   title: '',
   required: true,
-  type: 'TEXT',
+  type: 'free_text',
   options: [{ label: '', price: '' }, { label: '', price: '' }],
-  unitPrice: '',
-  yesPrice: '',
-  noPrice: '',
+  price: '',
 }
 
 const schema = toTypedSchema(z.object({
   title: z.string().trim().min(1, 'Informe a pergunta'),
   required: z.boolean(),
-  type: z.enum(['TEXT', 'SINGLE', 'MULTI', 'NUMBER', 'BOOLEAN']),
+  type: z.enum(['free_text', 'single_choice', 'multiple_choice', 'number', 'yes_no']),
   // Inputs type="number" chegam como number pelo v-model — coerce normaliza tudo pra string.
-  options: z.array(z.object({ label: z.string(), price: z.coerce.string() })),
-  unitPrice: z.coerce.string(),
-  yesPrice: z.coerce.string(),
-  noPrice: z.coerce.string(),
+  // `id` identifica a opção já salva, pra o composable decidir entre criar, atualizar e remover.
+  options: z.array(z.object({ id: z.string().optional(), label: z.string(), price: z.coerce.string() })),
+  price: z.coerce.string(),
 }).refine(
   values => !CHOICE_TYPES.includes(values.type) || values.options.some(option => option.label.trim()),
   { message: 'Adicione ao menos uma opção com nome', path: ['options'] }, // RN-P02
@@ -70,7 +74,7 @@ const { handleSubmit, values, resetForm, errors } = useForm({
   initialValues: props.initialValues ?? DEFAULT_VALUES,
 })
 
-const { fields: optionFields, push: pushOption, remove: removeOption } = useFieldArray<{ label: string, price: string }>('options')
+const { fields: optionFields, push: pushOption, remove: removeOption } = useFieldArray<{ id?: string, label: string, price: string }>('options')
 
 function addOption() {
   pushOption({ label: '', price: '' })
@@ -223,69 +227,29 @@ watch(() => props.open, (open) => {
           </button>
         </div>
 
-        <div v-else-if="values.type === 'NUMBER'" class="flex flex-col gap-2">
+        <div v-else-if="values.type && PRICE_COPY[values.type]" class="flex flex-col gap-2">
           <p class="text-label-strong-lg text-muted-foreground">
-            Valor por unidade
+            {{ PRICE_COPY[values.type]?.title }}
           </p>
           <p class="text-caption-xs text-muted-foreground">
-            Opcional. O número informado pelo cliente é multiplicado por esse valor.
+            {{ PRICE_COPY[values.type]?.hint }}
           </p>
 
-          <FormField v-slot="{ componentField }" name="unitPrice">
+          <FormField v-slot="{ componentField }" name="price">
             <div class="flex items-center gap-1 rounded-lg border border-border-subtle p-2.5">
               <span class="text-caption-lg text-muted-foreground">R$</span>
               <Input
                 v-bind="componentField"
                 type="number"
                 inputmode="decimal"
+                min="0"
+                step="0.01"
                 placeholder="0,00"
+                :aria-label="PRICE_COPY[values.type]?.title"
                 class="h-auto border-0 bg-transparent p-0 text-tag-lg text-foreground focus-visible:ring-0 md:text-tag-lg"
               />
             </div>
           </FormField>
-        </div>
-
-        <div v-else-if="values.type === 'BOOLEAN'" class="flex flex-col gap-2">
-          <p class="text-label-strong-lg text-muted-foreground">
-            Valor por resposta
-          </p>
-          <p class="text-caption-xs text-muted-foreground">
-            Se a resposta "Sim" tiver um custo extra, informe o valor. Deixe em branco se não houver custo.
-          </p>
-
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <span class="w-10 text-tag-lg text-foreground">Sim</span>
-              <FormField v-slot="{ componentField }" name="yesPrice">
-                <div class="flex flex-1 items-center gap-1 rounded-lg border border-border-subtle p-2.5">
-                  <span class="text-caption-lg text-muted-foreground">R$</span>
-                  <Input
-                    v-bind="componentField"
-                    type="number"
-                    inputmode="decimal"
-                    placeholder="0,00"
-                    class="h-auto border-0 bg-transparent p-0 text-tag-lg text-foreground focus-visible:ring-0 md:text-tag-lg"
-                  />
-                </div>
-              </FormField>
-            </div>
-
-            <div class="flex items-center gap-2">
-              <span class="w-10 text-tag-lg text-foreground">Não</span>
-              <FormField v-slot="{ componentField }" name="noPrice">
-                <div class="flex flex-1 items-center gap-1 rounded-lg border border-border-subtle p-2.5">
-                  <span class="text-caption-lg text-muted-foreground">R$</span>
-                  <Input
-                    v-bind="componentField"
-                    type="number"
-                    inputmode="decimal"
-                    placeholder="0,00"
-                    class="h-auto border-0 bg-transparent p-0 text-tag-lg text-foreground focus-visible:ring-0 md:text-tag-lg"
-                  />
-                </div>
-              </FormField>
-            </div>
-          </div>
         </div>
 
         <div class="flex gap-2.5 pt-2">

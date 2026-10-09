@@ -4,7 +4,6 @@ import { toast } from 'vue-sonner'
 import { LogoutDialog } from '@components/shared/logout-dialog'
 import { Button } from '@components/ui/button'
 import { useAuth } from '@composables/useAuth'
-import Plan from '@views/perfil/Plan.vue'
 import ProfileHeader from '@views/perfil/ProfileHeader.vue'
 import WhatsappConnection from '@views/perfil/WhatsappConnection.vue'
 
@@ -26,7 +25,6 @@ async function confirmLogout() {
 
   <ProfileHeader />
   <WhatsappConnection />
-  <Plan />
 
   <Button
     type="button"

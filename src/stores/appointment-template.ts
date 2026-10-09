@@ -1,23 +1,24 @@
 import { useRequestState } from "@composables/useRequestState";
 import {
-	type CreateServiceTemplateInput,
-	createServiceTemplate,
-	deleteServiceTemplate,
-	listServiceTemplates,
-	type ServiceTemplate,
-	type UpdateServiceTemplateInput,
-	updateServiceTemplate,
-} from "@services/service-template";
+	type AppointmentTemplate,
+	type CreateAppointmentTemplateInput,
+	createAppointmentTemplate,
+	deleteAppointmentTemplate,
+	listAppointmentTemplates,
+	type UpdateAppointmentTemplateInput,
+	updateAppointmentTemplate,
+} from "@services/appointment-template";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-export const useServiceTemplateStore = defineStore("service-template", () => {
-	const templates = ref<ServiceTemplate[]>([]);
+// Os "serviços" do profissional (back-api.md §5.3).
+export const useAppointmentTemplateStore = defineStore("appointment-template", () => {
+	const templates = ref<AppointmentTemplate[]>([]);
 	const hasLoaded = ref(false);
 	const { isLoading, error, errorStatus, run } = useRequestState();
 
 	const templateById = computed(() => {
-		const map = new Map<string, ServiceTemplate>();
+		const map = new Map<string, AppointmentTemplate>();
 		for (const template of templates.value) {
 			map.set(template.id, template);
 		}
@@ -25,7 +26,7 @@ export const useServiceTemplateStore = defineStore("service-template", () => {
 	});
 
 	async function fetchTemplates() {
-		const result = await run(() => listServiceTemplates());
+		const result = await run(() => listAppointmentTemplates());
 		if (result) {
 			templates.value = result;
 			hasLoaded.value = true;
@@ -38,14 +39,14 @@ export const useServiceTemplateStore = defineStore("service-template", () => {
 		return templates.value;
 	}
 
-	async function createTemplate(input: CreateServiceTemplateInput) {
-		const result = await run(() => createServiceTemplate(input));
+	async function createTemplate(input: CreateAppointmentTemplateInput) {
+		const result = await run(() => createAppointmentTemplate(input));
 		if (result) templates.value.push(result);
 		return result;
 	}
 
-	async function updateTemplate(id: string, input: UpdateServiceTemplateInput) {
-		const result = await run(() => updateServiceTemplate(id, input));
+	async function updateTemplate(id: string, input: UpdateAppointmentTemplateInput) {
+		const result = await run(() => updateAppointmentTemplate(id, input));
 		if (result) {
 			const index = templates.value.findIndex((template) => template.id === id);
 			if (index !== -1) templates.value[index] = result;
@@ -56,7 +57,7 @@ export const useServiceTemplateStore = defineStore("service-template", () => {
 	async function removeTemplate(id: string) {
 		let succeeded = false;
 		await run(async () => {
-			await deleteServiceTemplate(id);
+			await deleteAppointmentTemplate(id);
 			succeeded = true;
 		});
 		if (succeeded) {

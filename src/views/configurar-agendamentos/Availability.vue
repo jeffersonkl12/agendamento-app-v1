@@ -3,7 +3,7 @@ import type { WeekdayKey } from '@composables/useSchedulingConfigForm'
 import { ToggleGroup, ToggleGroupItem } from '@components/ui/toggle-group'
 import { WEEKDAYS } from '@composables/useSchedulingConfigForm'
 
-const enabledDays = defineModel<WeekdayKey[]>('enabledDays', { required: true })
+const openDays = defineModel<WeekdayKey[]>('openDays', { required: true })
 </script>
 
 <template>
@@ -18,7 +18,7 @@ const enabledDays = defineModel<WeekdayKey[]>('enabledDays', { required: true })
       </h2>
 
       <ToggleGroup
-        v-model="enabledDays"
+        v-model="openDays"
         type="multiple"
         :spacing="2"
         aria-labelledby="availability-days-title"

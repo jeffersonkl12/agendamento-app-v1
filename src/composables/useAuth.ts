@@ -1,12 +1,13 @@
 import type { SignInEmailInput, SignUpEmailInput } from "@services/auth";
 import { useAppointmentStore } from "@stores/appointment";
+import { useAppointmentTemplateStore } from "@stores/appointment-template";
 import { useAuthStore } from "@stores/auth";
-import { useBusinessProfileStore } from "@stores/business-profile";
 import { useCustomerStore } from "@stores/customer";
+import { useQuestionOptionStore } from "@stores/question-option";
 import { useSchedulingConfigStore } from "@stores/scheduling-config";
-import { useServiceTemplateStore } from "@stores/service-template";
-import { useServiceTemplateQuestionStore } from "@stores/service-template-question";
-import { useSubscriptionStore } from "@stores/subscription";
+import { useTemplateQuestionStore } from "@stores/template-question";
+import { useUserStore } from "@stores/user";
+import { useWhatsappStore } from "@stores/whatsapp";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -17,6 +18,8 @@ const REQUEST_RESET_SUCCESS_MESSAGE =
 
 const SIGN_UP_SUCCESS_MESSAGE =
 	"Conta criada! Enviamos um link de verificação para o seu e-mail — confirme antes de entrar.";
+
+const VERIFICATION_RESENT_MESSAGE = "Reenviamos o link de verificação. Confira seu e-mail.";
 
 const INVALID_RESET_TOKEN_MESSAGE =
 	"Este link de redefinição é inválido ou expirou. Solicite um novo.";
@@ -39,7 +42,7 @@ function resolveRedirect(redirect: unknown): string {
 }
 
 /**
- * Regra de negócio de autenticação (dashboard-api-routes.md §2) por cima da store de sessão:
+ * Regra de negócio de autenticação (back-api.md §2) por cima da store de sessão:
  * estado derivado, navegação pós-login/logout, mensagens únicas e limpeza das stores no logout.
  */
 export function useAuth() {
@@ -50,9 +53,10 @@ export function useAuth() {
 	const currentUser = computed(() => store.session.data?.user ?? null);
 
 	async function signUp(input: Omit<SignUpEmailInput, "callbackURL">): Promise<AuthActionResult> {
-		const user = await store.signUp({ ...input, callbackURL: appUrl("/login") });
+		// O link do e-mail abre a sessão sozinho (autoSignInAfterVerification) e cai no painel.
+		const user = await store.signUp({ ...input, callbackURL: appUrl("/") });
 		if (!user) return { success: false, message: store.error };
-		// Cadastro não loga automaticamente (§2): o usuário precisa verificar o e-mail antes de entrar.
+		// Cadastro não abre sessão (token null — §2.1): o usuário precisa verificar o e-mail.
 		await router.push("/login");
 		return { success: true, message: SIGN_UP_SUCCESS_MESSAGE };
 	}
@@ -66,19 +70,28 @@ export function useAuth() {
 
 	async function signInWithGoogle(): Promise<AuthActionResult> {
 		const redirect = resolveRedirect(route.query.redirect);
-		const result = await store.signInGoogle(appUrl(redirect));
-		// Em sucesso o better-auth redireciona o navegador pro Google; só volta aqui em erro.
-		return result ? { success: true, message: null } : { success: false, message: store.error };
+		const result = await store.signInGoogle(appUrl(redirect), appUrl("/login?error=oauth"));
+		if (!result?.url) return { success: false, message: store.error };
+		// disableRedirect: a API devolve a URL do Google e a navegação é nossa.
+		window.location.href = result.url;
+		return { success: true, message: null };
+	}
+
+	async function resendVerification(email: string): Promise<AuthActionResult> {
+		await store.resendVerification(email, appUrl("/"));
+		if (store.error) return { success: false, message: store.error };
+		return { success: true, message: VERIFICATION_RESENT_MESSAGE };
 	}
 
 	function resetDomainStores() {
 		useAppointmentStore().$reset();
-		useBusinessProfileStore().$reset();
+		useAppointmentTemplateStore().$reset();
 		useCustomerStore().$reset();
+		useQuestionOptionStore().$reset();
 		useSchedulingConfigStore().$reset();
-		useServiceTemplateStore().$reset();
-		useServiceTemplateQuestionStore().$reset();
-		useSubscriptionStore().$reset();
+		useTemplateQuestionStore().$reset();
+		useUserStore().$reset();
+		useWhatsappStore().$reset();
 	}
 
 	async function logout(): Promise<AuthActionResult> {
@@ -117,6 +130,7 @@ export function useAuth() {
 		signUp,
 		signIn,
 		signInWithGoogle,
+		resendVerification,
 		logout,
 		requestPasswordReset,
 		resetPassword,
