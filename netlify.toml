@@ -1,0 +1,17 @@
+[build]
+  command = "bun run build"
+  publish = "dist"
+
+# Proxy reverso: o navegador fala HTTPS com o Netlify e o Netlify repassa pra API em HTTP.
+# Mantém front e API no mesmo host (cookie SameSite=Lax do Better Auth, sem CORS, sem Mixed Content).
+[[redirects]]
+  from = "/api/*"
+  to = "http://207.180.228.16/api/:splat"
+  status = 200
+  force = true
+
+# Fallback da SPA (vue-router). Precisa vir DEPOIS da regra da API.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
