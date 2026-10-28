@@ -4,9 +4,11 @@
 
 # Proxy reverso: o navegador fala HTTPS com o Netlify e o Netlify repassa pra API em HTTP.
 # Mantém front e API no mesmo host (cookie SameSite=Lax do Better Auth, sem CORS, sem Mixed Content).
+# Tem que ser o host do sslip (não o IP): o proxy da VPS roteia pelo header Host e o IP puro cai em 503.
+# HTTP de propósito: o certificado do sslip é inválido, e HTTPS faria o proxy do Netlify falhar no TLS.
 [[redirects]]
   from = "/api/*"
-  to = "http://207.180.228.16/api/:splat"
+  to = "http://fbiw7vpwcntz86hylyjjaza4.207.180.228.16.sslip.io/api/:splat"
   status = 200
   force = true
 
